@@ -102,7 +102,7 @@ jobs:
               echo "::error::Could not calculate a valid signing-certificate fingerprint."
               exit 1
             }
-            printf '%s\\n' "$CERT_FINGERPRINT" > "$CERT_FILE"
+            printf '%s\n' "$CERT_FINGERPRINT" > "$CERT_FILE"
             gh release create "$SIGNING_TAG" \
               "$KEYSTORE#mobile-harness-upload.p12" \
               "$CERT_FILE#release-signing-cert.sha256" \
