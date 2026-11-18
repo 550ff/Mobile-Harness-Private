@@ -3,6 +3,7 @@ package com.jarves.mh.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -69,6 +71,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,12 +109,15 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.ui.res.stringResource
 import com.jarves.mh.R
 import com.jarves.mh.runtime.AntigravityAuthStatus
+import com.jarves.mh.runtime.FreeLlmApiController
+import com.jarves.mh.runtime.FreeLlmApiPhase
+import com.jarves.mh.runtime.FreeLlmApiService
 import com.jarves.mh.ui.theme.AppLanguage
 import com.jarves.mh.ui.theme.AppThemeMode
 import com.jarves.mh.ui.theme.PocketOrange
 import kotlinx.coroutines.launch
 
-private enum class SettingsSection { APPEARANCE, LANGUAGE, TOOLS, RUNTIME, DIAGNOSTICS, BACKUP, UPDATE_CHANNEL }
+private enum class SettingsSection { APPEARANCE, LANGUAGE, TOOLS, FREELLMAPI, RUNTIME, DIAGNOSTICS, BACKUP, UPDATE_CHANNEL }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -428,6 +434,30 @@ fun SettingsScreen(
             }
 
             item {
+                val gateway by FreeLlmApiController.snapshot.collectAsState()
+                SettingsAccordion(
+                    title = stringResource(R.string.st_freellmapi_gateway_title),
+                    subtitle = when (gateway.phase) {
+                        FreeLlmApiPhase.IDLE -> stringResource(R.string.st_freellmapi_gateway_not_installed)
+                        FreeLlmApiPhase.INSTALLING -> stringResource(R.string.st_freellmapi_gateway_installing)
+                        FreeLlmApiPhase.INSTALLED -> stringResource(R.string.st_freellmapi_gateway_installed)
+                        FreeLlmApiPhase.STARTING -> stringResource(R.string.st_freellmapi_gateway_starting)
+                        FreeLlmApiPhase.RUNNING -> stringResource(R.string.st_freellmapi_gateway_running)
+                        FreeLlmApiPhase.ERROR -> stringResource(R.string.st_freellmapi_gateway_error)
+                    },
+                    icon = Icons.Default.SmartToy,
+                    expanded = expanded == SettingsSection.FREELLMAPI,
+                    onClick = {
+                        val opening = expanded != SettingsSection.FREELLMAPI
+                        toggle(SettingsSection.FREELLMAPI)
+                        if (opening) FreeLlmApiController.refresh(context)
+                    },
+                ) {
+                    FreeLlmApiSettingsContent()
+                }
+            }
+
+            item {
                 SettingsAccordion(
                     title = stringResource(R.string.settings_runtime),
                     subtitle = "Ubuntu 20.04 PRoot · ARM64",
@@ -558,6 +588,105 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun FreeLlmApiSettingsContent() {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val gateway by FreeLlmApiController.snapshot.collectAsState()
+    LaunchedEffect(Unit) { FreeLlmApiController.refresh(context) }
+    val busy = gateway.phase == FreeLlmApiPhase.INSTALLING || gateway.phase == FreeLlmApiPhase.STARTING
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.st_freellmapi_gateway_help),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(13.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(gateway.message, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                if (busy) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = PocketOrange,
+                    )
+                }
+                gateway.error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = {
+                    when {
+                        gateway.running -> FreeLlmApiService.stop(context)
+                        gateway.installed -> FreeLlmApiService.start(context)
+                        else -> FreeLlmApiService.install(context)
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    when {
+                        gateway.running -> stringResource(R.string.st_freellmapi_stop)
+                        gateway.installed -> stringResource(R.string.st_freellmapi_start)
+                        else -> stringResource(R.string.st_freellmapi_install)
+                    },
+                    maxLines = 1,
+                )
+            }
+            OutlinedButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:3001")))
+                    }
+                },
+                enabled = gateway.running,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.st_freellmapi_dashboard), maxLines = 1)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(
+                onClick = { clipboard.setText(AnnotatedString("http://127.0.0.1:3001")) },
+            ) {
+                Text(stringResource(R.string.st_freellmapi_copy_endpoint))
+            }
+            if (gateway.installed && !gateway.running) {
+                TextButton(
+                    onClick = { FreeLlmApiService.install(context) },
+                    enabled = !busy,
+                ) {
+                    Text(stringResource(R.string.st_freellmapi_repair))
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.st_freellmapi_gateway_setup_help),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            stringResource(R.string.st_freellmapi_gateway_storage_note),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun DeveloperDiagnosticsContent(
     state: AppUiState,
     onRefresh: () -> Unit,
@@ -678,10 +807,11 @@ private fun SettingsAccordion(
     content: @Composable () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
     ) {
         Column {
             Row(
@@ -865,8 +995,11 @@ private fun ConnectionSettings(
     onValidate: () -> Unit,
 ) {
     val visibleKinds = remember(state.agentKind) { providersForAgent(state.agentKind) }
+    val context = LocalContext.current
     var providerExpanded by rememberSaveable { mutableStateOf(false) }
     var addKeyExpanded by rememberSaveable(savedKeys.isEmpty()) { mutableStateOf(savedKeys.isEmpty()) }
+    var showModelPicker by rememberSaveable { mutableStateOf(false) }
+    var modelSearch by rememberSaveable { mutableStateOf("") }
     Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).background(
@@ -932,6 +1065,37 @@ private fun ConnectionSettings(
         }
     }
 
+    if (selectedKind == ProviderKind.CUSTOM && state.agentKind == AgentKind.CLAUDE_CODE) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = {
+                    onBaseUrl("http://127.0.0.1:3001")
+                    onModel("claude-sonnet-4-5")
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.st_use_freellmapi_preset), maxLines = 1)
+            }
+            TextButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:3001")))
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.st_open_freellmapi))
+            }
+        }
+        Text(
+            stringResource(R.string.st_freellmapi_connection_help),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     if (selectedKind.fixedBaseUrl) {
         Text(
             selectedKind.defaultBaseUrl,
@@ -961,11 +1125,68 @@ private fun ConnectionSettings(
     }
     Text(stringResource(R.string.st_model), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
     OutlinedTextField(model, onModel, label = { Text(stringResource(R.string.provider_model_id)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    OutlinedButton(onClick = onModels, enabled = baseUrl.isNotBlank() && apiKey.isNotBlank() && !isDiscovering, modifier = Modifier.fillMaxWidth().height(50.dp)) {
-        if (isDiscovering) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        else Icon(if (models.isEmpty()) Icons.Default.Search else Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(if (models.isEmpty()) stringResource(R.string.provider_find_models) else stringResource(R.string.provider_available_models_count, models.size))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(
+            onClick = {
+                if (models.isNotEmpty()) showModelPicker = true else onModels()
+            },
+            enabled = baseUrl.isNotBlank() && apiKey.isNotBlank() && !isDiscovering,
+            modifier = Modifier.weight(1f).height(50.dp),
+        ) {
+            if (isDiscovering) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            else Icon(if (models.isEmpty()) Icons.Default.Search else Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(7.dp))
+            Text(if (models.isEmpty()) stringResource(R.string.provider_find_models) else stringResource(R.string.provider_available_models_count, models.size))
+        }
+        IconButton(onClick = onModels, enabled = baseUrl.isNotBlank() && apiKey.isNotBlank() && !isDiscovering) {
+            Icon(Icons.Default.Refresh, stringResource(R.string.provider_refresh_models))
+        }
+    }
+    if (showModelPicker) {
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            title = { Text(stringResource(R.string.st_choose_model)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = modelSearch,
+                        onValueChange = { modelSearch = it },
+                        label = { Text(stringResource(R.string.st_search_model_or_custom)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    val filteredModels = models.filter {
+                        modelSearch.isBlank() ||
+                            it.id.contains(modelSearch, ignoreCase = true) ||
+                            it.displayName.contains(modelSearch, ignoreCase = true)
+                    }
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
+                        items(filteredModels, key = { it.id }) { model ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    onModel(model.id)
+                                    modelSearch = ""
+                                    showModelPicker = false
+                                }.padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(model.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(model.id, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                }
+                                if (model.isFree) Text(stringResource(R.string.st_free), color = PocketOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelPicker = false; modelSearch = "" }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

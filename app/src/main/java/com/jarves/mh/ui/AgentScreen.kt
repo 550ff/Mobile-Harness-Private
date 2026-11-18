@@ -1,5 +1,6 @@
 package com.jarves.mh.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -1199,10 +1200,11 @@ private fun AgentAntigravityCard(
     val auth = state.antigravityAuth
 
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
-        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(22.dp),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
     ) {
         Column(
             Modifier.padding(16.dp),
@@ -1562,10 +1564,11 @@ private fun AgentProviderCard(
     val context = LocalContext.current
 
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
-        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(22.dp),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
     ) {
         Column(
             Modifier.padding(horizontal = 16.dp, vertical = 18.dp),

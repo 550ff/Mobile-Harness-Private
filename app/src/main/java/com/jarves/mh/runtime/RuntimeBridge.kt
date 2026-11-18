@@ -2,6 +2,7 @@ package com.jarves.mh.runtime
 
 import com.jarves.mh.model.ChatMessage
 import com.jarves.mh.model.ChangeItem
+import com.jarves.mh.model.ProviderKind
 import com.jarves.mh.model.ProviderProfile
 import com.jarves.mh.model.ProjectKind
 import com.jarves.mh.model.RuntimeEvent
@@ -46,10 +47,26 @@ internal fun List<ChatMessage>.recentWithinCharacterBudget(maxCharacters: Int): 
  * CLIs refuse to start without one. Send a harmless placeholder that such servers ignore.
  */
 internal fun localServerPlaceholderKey(profile: ProviderProfile): String =
-    if (profile.kind == com.jarves.mh.model.ProviderKind.CUSTOM) "no-key-required" else ""
+    if (profile.kind == ProviderKind.CUSTOM && !isFreeLlmApiEndpoint(profile.baseUrl)) "no-key-required" else ""
+
+internal fun isFreeLlmApiEndpoint(baseUrl: String): Boolean = runCatching {
+    val uri = java.net.URI(baseUrl.trim())
+    uri.host != null && uri.port in setOf(3001, 31415)
+}.getOrDefault(false)
+
+/** Only the in-app loopback instance is auto-started; LAN/Termux gateways stay user-managed. */
+internal fun isEmbeddedFreeLlmApiEndpoint(baseUrl: String): Boolean = runCatching {
+    val uri = java.net.URI(baseUrl.trim())
+    val host = uri.host?.lowercase()?.removePrefix("[")?.removeSuffix("]")
+    uri.scheme.equals("http", ignoreCase = true) &&
+        host in setOf("localhost", "127.0.0.1", "::1") &&
+        uri.port == 3001 &&
+        uri.path.orEmpty().let { it.isBlank() || it == "/" || it.trimEnd('/') == "/v1" }
+}.getOrDefault(false)
 
 object RuntimeLaunchConfigBuilder {
     fun build(profile: ProviderProfile, authToken: String? = null, localGatewayUrl: String? = null): RuntimeLaunchConfig {
+        val freeLlmApi = profile.kind == ProviderKind.CUSTOM && isFreeLlmApiEndpoint(profile.baseUrl)
         val environment = linkedMapOf(
             "DISABLE_AUTOUPDATER" to "1",
             // GitHub CLI is installed in the shared PRoot home. Keep authenticated Git
@@ -113,6 +130,22 @@ object RuntimeLaunchConfigBuilder {
                 } else {
                     environment["ANTHROPIC_API_KEY"] = authToken
                 }
+            }
+            if (freeLlmApi) {
+                // Keep the selected primary model, but route background work through the
+                // gateway's cheaper Claude alias instead of silently using the Opus model
+                // for every helper/sub-agent request.
+                environment["ANTHROPIC_DEFAULT_OPUS_MODEL"] = "claude-opus-4-5"
+                environment["ANTHROPIC_DEFAULT_SONNET_MODEL"] = "claude-sonnet-4-5"
+                environment["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = "claude-haiku-4-5"
+                environment["ANTHROPIC_SMALL_MODEL"] = "claude-haiku-4-5"
+                environment["ANTHROPIC_FAST_MODEL"] = "claude-haiku-4-5"
+                environment["CLAUDE_CODE_SUBAGENT_MODEL"] = "claude-haiku-4-5"
+                environment["CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS"] = "10000"
+                // FreeLLMAPI applies these request-side hints only when compression is
+                // enabled in its own settings; the server remains the authority.
+                environment["ANTHROPIC_CUSTOM_HEADERS"] =
+                    "X-FreeLLM-Compress: standard\nX-FreeLLM-Task-Type: code"
             }
         }
         return RuntimeLaunchConfig(

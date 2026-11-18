@@ -26,6 +26,7 @@ import com.jarves.mh.BuildConfig
 import com.jarves.mh.R
 import com.jarves.mh.data.ApiKeyVault
 import com.jarves.mh.data.ApiKeyInfo
+import com.jarves.mh.data.GitHubAccessTokenStore
 import com.jarves.mh.data.AppPreferences
 import com.jarves.mh.model.ActivityItem
 import com.jarves.mh.model.AgentKind
@@ -435,6 +436,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun appUpdater(): AppUpdater = AppUpdater(
         getApplication(),
         if (BuildConfig.DEBUG) preferences.debugUpdateManifestUrl else "",
+        GitHubAccessTokenStore(getApplication()).read(),
     )
     @Volatile private var projectTerminalProcess: Process? = null
     @Volatile private var terminalProcess: Process? = null
@@ -2268,13 +2270,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkForAppUpdate(force: Boolean = false) {
-        if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 24L * 60L * 60L * 1000L) return
+        // Check more often than the old 24-hour window, without polling on recomposition.
+        if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 6L * 60L * 60L * 1000L) return
         viewModelScope.launch(Dispatchers.IO) {
-            val update = runCatching { appUpdater().check() }.getOrNull()
-            preferences.lastAppUpdateCheckMillis = System.currentTimeMillis()
-            if (update != null) {
+            runCatching { appUpdater().check() }.onSuccess { update ->
+                // Failed network/manifest requests do not consume the next check window.
+                preferences.lastAppUpdateCheckMillis = System.currentTimeMillis()
+                _state.update { current ->
+                    if (update != null) {
+                        current.copy(
+                            appUpdate = update,
+                            appUpdateStatus = AppUpdateStatus.AVAILABLE,
+                            appUpdateError = null,
+                        )
+                    } else {
+                        current.copy(appUpdate = null, appUpdateStatus = null, appUpdateError = null)
+                    }
+                }
+            }.onFailure { error ->
+                if (error.message?.contains("Reconnect GitHub", ignoreCase = true) == true) {
+                    GitHubAccessTokenStore(getApplication()).clear()
+                }
                 _state.update {
-                    it.copy(appUpdate = update, appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
+                    it.copy(
+                        appUpdateStatus = AppUpdateStatus.ERROR,
+                        appUpdateError = error.message?.take(240) ?: str(R.string.vm_update_download_failed),
+                    )
                 }
             }
         }
@@ -2320,6 +2341,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(appUpdateStatus = AppUpdateStatus.ERROR, appUpdateError = error.message ?: str(R.string.vm_installer_start_failed)) }
                 }
             }.onFailure { error ->
+                if (error.message?.contains("Reconnect GitHub", ignoreCase = true) == true) {
+                    GitHubAccessTokenStore(getApplication()).clear()
+                }
                 _state.update { it.copy(appUpdateStatus = AppUpdateStatus.ERROR, appUpdateError = error.message ?: str(R.string.vm_update_download_failed)) }
             }
         }
@@ -3606,7 +3630,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         outputFile.delete()
                     }
                     ensureGitHubGitCredentialHelper()
-                    githubAccountLogin() ?: error(str(R.string.vm_github_account_unknown))
+                    val login = githubAccountLogin() ?: error(str(R.string.vm_github_account_unknown))
+                    persistGitHubUpdateToken()
+                    login
                 }
             }
             result.onSuccess { login ->
@@ -3621,6 +3647,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 refreshGitHubRepositories()
+                checkForAppUpdate(force = true)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -3697,6 +3724,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             result.onSuccess {
                 preferences.githubLogin = ""
+                GitHubAccessTokenStore(getApplication()).clear()
                 _state.update {
                     it.copy(
                         githubAuthStatus = GitHubAuthStatus.DISCONNECTED,
@@ -3718,9 +3746,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val login = runCatching { githubAccountLogin() }.getOrNull()
         if (login.isNullOrBlank()) {
             preferences.githubLogin = ""
+            GitHubAccessTokenStore(getApplication()).clear()
             _state.update { it.copy(githubAuthStatus = GitHubAuthStatus.DISCONNECTED, githubLogin = null) }
         } else {
-            val gitSetupError = runCatching { ensureGitHubGitCredentialHelper() }.exceptionOrNull()?.message
+            val gitSetupError = runCatching {
+                ensureGitHubGitCredentialHelper()
+                persistGitHubUpdateToken()
+            }.exceptionOrNull()?.message
             preferences.githubLogin = login
             _state.update {
                 it.copy(
@@ -3733,7 +3765,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     },
                 )
             }
+            checkForAppUpdate(force = true)
         }
+    }
+
+    private fun persistGitHubUpdateToken() {
+        val (exit, token) = runGitHubCli(listOf("auth", "token"))
+        check(exit == 0 && token.isNotBlank()) {
+            "GitHub CLI did not return an access token for private app updates."
+        }
+        GitHubAccessTokenStore(getApplication()).save(token)
     }
 
     private fun ensureGitHubGitCredentialHelper() {

@@ -45,6 +45,18 @@ class ProviderApiClientTest {
     }
 
     @Test
+    fun modelParserPreservesFullModelIdsAndPricingMetadata() {
+        val models = ModelResponseParser.parse(
+            """{"data":[{"id":"anthropic/claude-opus-5.5","display_name":"Claude Opus 5.5","pricing":{"prompt":"0","completion":"0"}}]}""",
+        )
+
+        assertEquals(1, models.size)
+        assertEquals("anthropic/claude-opus-5.5", models.single().id)
+        assertEquals("Claude Opus 5.5", models.single().displayName)
+        assertEquals(true, models.single().isFree)
+    }
+
+    @Test
     fun chatAndAnthropicCompatibleProbesUseProviderSafeTokenLimit() {
         val client = ProviderApiClient()
         val chat = JSONObject(client.validationBody("chat-model", ProviderProtocol.OPENAI_CHAT))

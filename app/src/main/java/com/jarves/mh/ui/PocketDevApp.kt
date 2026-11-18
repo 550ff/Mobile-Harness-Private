@@ -24,6 +24,7 @@ import com.jarves.mh.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -270,6 +271,8 @@ import com.jarves.mh.ui.theme.SpaceXs
 import com.jarves.mh.ui.theme.SpaceXl
 import com.jarves.mh.ui.theme.PocketGreen
 import com.jarves.mh.ui.theme.PocketOrange
+import com.jarves.mh.ui.theme.*
+import com.jarves.mh.ui.components.*
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -3856,120 +3859,17 @@ private fun ProjectsScreen(
                 }
             } else {
                 items(projects, key = { it.id }) { project ->
-                    item {
-                        ProjectCard(
-                            project = project,
-                            taskRunning = state.isRunning && state.activeProject?.id == project.id,
-                            terminalRunning = state.projectTerminalRunning && state.activeProject?.id == project.id,
-                            buildRunning = state.androidBuildRunning && state.activeProject?.id == project.id,
-                            onOpen = { onOpen(project) },
-                            onRename = { onRenameProject(project.id, it) },
-                            onDelete = { onDeleteProject(project.id) },
-                        )
-                    }
+                    ProjectCard(
+                        project = project,
+                        taskRunning = state.isRunning && state.activeProject?.id == project.id,
+                        terminalRunning = state.projectTerminalRunning && state.activeProject?.id == project.id,
+                        buildRunning = state.androidBuildRunning && state.activeProject?.id == project.id,
+                        onOpen = { onOpen(project) },
+                        onRename = { onRenameProject(project.id, it) },
+                        onDelete = { onDeleteProject(project.id) },
+                    )
                 }
             }
-        }
-    }
-    // Dialogs unchanged...
-                            text = stringResource(R.string.projects_new_project),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                val isImportExpanded = importExpanded || state.projectImporting || state.gitCloneRunning
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { importExpanded = !importExpanded }
-                                .padding(horizontal = 14.dp, vertical = 13.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.projects_bring_existing), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                                Text(
-                                    stringResource(if (isImportExpanded) R.string.projects_import_expanded else R.string.projects_import_sources),
-                                    fontSize = 10.5.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Icon(
-                                imageVector = if (isImportExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                contentDescription = if (isImportExpanded) stringResource(R.string.ws_collapse) else stringResource(R.string.ws_expand),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        AnimatedVisibility(visible = isImportExpanded) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 14.dp, end = 14.dp, bottom = 14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                    ImportSourceButton(
-                                        icon = Icons.Default.Download,
-                                        title = stringResource(if (state.projectImporting) R.string.projects_importing else R.string.projects_zip_file),
-                                        enabled = !state.projectImporting && !state.gitCloneRunning,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { importZipLauncher.launch("*/*") },
-                                        loading = state.projectImporting,
-                                    )
-                                    ImportSourceButton(
-                                        icon = Icons.Default.Code,
-                                        title = stringResource(if (state.gitCloneRunning) R.string.projects_cloning else R.string.projects_git_url),
-                                        enabled = !state.projectImporting && !state.gitCloneRunning,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { showGitDialog = true },
-                                        loading = state.gitCloneRunning,
-                                    )
-                                }
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().clickable(enabled = !state.gitCloneRunning) {
-                                        showGitHubDialog = true
-                                        if (state.githubAuthStatus == GitHubAuthStatus.CONNECTED && state.githubRepositories.isEmpty()) onRefreshGitHub()
-                                    },
-                                    color = MaterialTheme.colorScheme.surface,
-                                    shape = RoundedCornerShape(13.dp),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                ) {
-                                    Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Code, null, tint = PocketOrange, modifier = Modifier.size(19.dp))
-                                        Spacer(Modifier.width(10.dp))
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                state.githubLogin?.let { stringResource(R.string.projects_github_account, it) } ?: stringResource(R.string.projects_connect_github),
-                                                fontSize = 12.5.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                            Text(
-                                                stringResource(if (state.githubLogin != null) R.string.projects_browse_repositories else R.string.projects_sign_in_repositories),
-                                                fontSize = 10.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                                (state.projectImportMessage ?: state.gitCloneMessage)?.let { message ->
-                                    Text(message, fontSize = 10.5.sp, color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        }
-                    }
-                }
         }
     }
     if (showCreate) AlertDialog(
@@ -4329,7 +4229,13 @@ private fun ProjectCard(
     var showRename by rememberSaveable(project.id) { mutableStateOf(false) }
     var showDelete by rememberSaveable(project.id) { mutableStateOf(false) }
     var renameText by rememberSaveable(project.id) { mutableStateOf(project.name) }
-    Card(Modifier.fillMaxWidth().clickable(onClick = onOpen), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().animateContentSize().clickable(onClick = onOpen),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
+    ) {
         Row(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                 Icon(

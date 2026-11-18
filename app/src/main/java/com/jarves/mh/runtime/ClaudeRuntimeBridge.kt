@@ -141,6 +141,9 @@ class ClaudeRuntimeBridge(
             // Sending a prompt must never perform network update checks or put setup
             // messages into the conversation.
             val installed = installer.installedRuntime()
+            if (provider.kind == ProviderKind.CUSTOM && isEmbeddedFreeLlmApiEndpoint(provider.baseUrl)) {
+                FreeLlmApiService.ensureRunning(context)
+            }
             installer.ensureSettingsAndHooks()
             val workspace = ensureWorkspace(projectId)
             createCheckpoint(projectId, workspace)

@@ -1,10 +1,10 @@
 package com.jarves.mh.ui.components
 
-import androidx.compose.animation.animateFloatAsState
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.rememberInfiniteTransition
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox as M3TooltipBox
 import androidx.compose.material3.TooltipState
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,9 +43,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.BorderStroke
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -209,26 +211,28 @@ fun StatusDot(
         StatusState.Error -> Color.Red
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, delayMillis = 0, easing = androidx.compose.animation.core.LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
+    val pulseAlpha = if (showPulse && state == StatusState.Connecting) {
+        val infiniteTransition = rememberInfiniteTransition(label = "connecting-status")
+        infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.4f,
+            animationSpec = infiniteRepeatable(
+                animation = tween<Float>(1000, easing = androidx.compose.animation.core.LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse"
+        ).value
+    } else {
+        1f
+    }
 
     Box(
         modifier = modifier
             .size(size.dp)
             .graphicsLayer {
-                if (showPulse && state == StatusState.Connecting) {
-                    alpha = pulseAlpha
-                }
+                alpha = pulseAlpha
             }
-            .clip(RoundedCornerShape(RadiusPill.dp))
+            .clip(RoundedCornerShape(RadiusPill))
             .background(color)
     )
 }
@@ -244,11 +248,21 @@ fun AppDivider(
     vertical: Boolean = false,
     thickness: Int = 1,
 ) {
-    Divider(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-        thickness = thickness.dp
-    )
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+    if (vertical) {
+        Box(
+            modifier = modifier
+                .width(thickness.dp)
+                .fillMaxSize()
+                .background(dividerColor)
+        )
+    } else {
+        Divider(
+            modifier = modifier.fillMaxWidth(),
+            color = dividerColor,
+            thickness = thickness.dp
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -417,8 +431,8 @@ fun AppFab(
             text = { Text(text = text, fontWeight = FontWeight.Bold) },
             containerColor = backgroundColor,
             contentColor = contentColor,
-            shape = RoundedCornerShape(RadiusPill.dp),
-            elevation = FloatingActionButtonDefaults.extendedFabElevation(
+            shape = RoundedCornerShape(RadiusPill),
+            elevation = FloatingActionButtonDefaults.elevation(
                 defaultElevation = ElevationLg
             )
         )
@@ -428,8 +442,8 @@ fun AppFab(
             modifier = modifier.padding(bottom = SpaceLg, end = SpaceLg),
             containerColor = backgroundColor,
             contentColor = contentColor,
-            shape = RoundedCornerShape(RadiusPill.dp),
-            elevation = FloatingActionButtonDefaults.fabElevation(
+            shape = RoundedCornerShape(RadiusPill),
+            elevation = FloatingActionButtonDefaults.elevation(
                 defaultElevation = ElevationLg
             )
         ) {
@@ -455,6 +469,7 @@ fun TooltipBox(
         M3TooltipBox(
             modifier = Modifier.fillMaxSize(),
             state = tooltipState,
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
             tooltip = {
                 Box(
                     modifier = Modifier.padding(SpaceMd)
@@ -514,7 +529,7 @@ fun AppChip(
                 trailingIcon?.invoke()
             }
         },
-        shape = RoundedCornerShape(RadiusPill.dp),
+        shape = RoundedCornerShape(RadiusPill),
         border = if (!selected) BorderStroke(1.dp, colors.outlineVariant) else null
     )
 }
@@ -569,22 +584,22 @@ fun LoadingOverlay(
 // ANIMATED VISIBILITY — shared animation specs
 // ═══════════════════════════════════════════════════════════════════════════════
 object AnimationSpecs {
-    val FadeInOut = androidx.compose.animation.core.tween(
+    val FadeInOut = androidx.compose.animation.core.tween<Float>(
         durationMillis = 200,
         easing = androidx.compose.animation.core.FastOutSlowInEasing
     )
 
-    val SlideUpDown = androidx.compose.animation.core.tween(
+    val SlideUpDown = androidx.compose.animation.core.tween<Float>(
         durationMillis = 300,
         easing = androidx.compose.animation.core.FastOutSlowInEasing
     )
 
-    val SpringDamping = androidx.compose.animation.core.spring(
+    val SpringDamping = androidx.compose.animation.core.spring<Float>(
         dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
         stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
     )
 
-    val ExpandCollapse = androidx.compose.animation.core.tween(
+    val ExpandCollapse = androidx.compose.animation.core.tween<Float>(
         durationMillis = 250,
         easing = androidx.compose.animation.core.FastOutSlowInEasing
     )
