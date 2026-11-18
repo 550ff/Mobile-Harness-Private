@@ -2335,6 +2335,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(appUpdateStatus = AppUpdateStatus.ERROR, appUpdateError = error.message ?: str(R.string.vm_installer_start_failed)) }
                 }
             }.onFailure { error ->
+                if (error.message?.contains("Reconnect GitHub", ignoreCase = true) == true) {
+                    GitHubAccessTokenStore(getApplication()).clear()
+                }
                 _state.update { it.copy(appUpdateStatus = AppUpdateStatus.ERROR, appUpdateError = error.message ?: str(R.string.vm_update_download_failed)) }
             }
         }
