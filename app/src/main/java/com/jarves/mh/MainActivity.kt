@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -29,12 +28,9 @@ import com.jarves.mh.update.AppUpdateScheduler
 import com.jarves.mh.update.EXTRA_FORCE_APP_UPDATE_CHECK
 
 class MainActivity : ComponentActivity() {
-    private var appliedLanguageCode: String? = null
-
     // Apply the in-app language to the Activity itself, not only to the Compose tree:
     // dialogs, dropdown menus and popups get their own window whose context is the Activity.
     override fun attachBaseContext(newBase: Context) {
-        appliedLanguageCode = AppStrings.languageCode(newBase)
         super.attachBaseContext(AppStrings.context(newBase))
     }
     private val mainViewModel: MainViewModel by viewModels()
@@ -49,9 +45,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm = mainViewModel
             val state by vm.state.collectAsStateWithLifecycle()
-            LaunchedEffect(state.languageCode) {
-                if (state.languageCode != appliedLanguageCode) recreate()
-            }
             val context = LocalContext.current
             val localizedContext = remember(state.languageCode, context) {
                 LocaleHelper.applyLanguage(context, state.languageCode)
