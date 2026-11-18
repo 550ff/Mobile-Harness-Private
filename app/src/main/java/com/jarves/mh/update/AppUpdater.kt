@@ -123,12 +123,24 @@ class AppUpdater(
         val target = File(directory, "mobile-harness-${BuildConfig.APP_VARIANT}.apk")
         val apkUrl = URL(info.apkUrl)
         val apkHost = apkUrl.host.lowercase()
-        val validPrivateAssetPath = Regex("^/repos/[^/]+/[^/]+/releases/assets/[0-9]+/?$").matches(apkUrl.path)
-        if (apkUrl.protocol != "https" || apkHost != "api.github.com" || !validPrivateAssetPath) {
-            throw IOException("Private app updates must use a valid HTTPS GitHub release-asset API URL.")
+        // Debug-only test manifests may serve an APK from the same HTTPS tunnel
+        // that serves the manifest. Production releases remain restricted to
+        // authenticated GitHub release-asset API URLs.
+        val debugOverride = BuildConfig.DEBUG && manifestUrlOverride.isNotBlank()
+        val token = if (debugOverride) {
+            val overrideHost = URL(manifestUrlOverride).host.lowercase()
+            if (apkUrl.protocol != "https" || apkHost != overrideHost) {
+                throw IOException("Debug update APKs must use the manifest's HTTPS host.")
+            }
+            null
+        } else {
+            val validPrivateAssetPath = Regex("^/repos/[^/]+/[^/]+/releases/assets/[0-9]+/?$").matches(apkUrl.path)
+            if (apkUrl.protocol != "https" || apkHost != "api.github.com" || !validPrivateAssetPath) {
+                throw IOException("Private app updates must use a valid HTTPS GitHub release-asset API URL.")
+            }
+            accessToken?.takeIf(String::isNotBlank)
+                ?: throw IOException("Connect GitHub in Settings to download private app updates.")
         }
-        val token = accessToken?.takeIf(String::isNotBlank)
-            ?: throw IOException("Connect GitHub in Settings to download private app updates.")
         var connection = apkUrl.openConnection() as HttpURLConnection
         var completed = false
         try {
@@ -136,15 +148,18 @@ class AppUpdater(
             connection.readTimeout = 60_000
             // Never forward the private-repository token to GitHub's signed asset host.
             connection.instanceFollowRedirects = false
-            connection.setRequestProperty("Authorization", "Bearer $token")
+            if (token != null) connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("Accept", "application/octet-stream")
             connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
-            if (code == 401 || code == 403) {
+            if (token != null && code in setOf(401, 403)) {
                 throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
             }
             if (code in setOf(301, 302, 303, 307, 308)) {
+                if (debugOverride) {
+                    throw IOException("The debug update server must serve the APK directly without redirects.")
+                }
                 val location = connection.getHeaderField("Location")
                     ?: throw IOException("GitHub returned an invalid private asset redirect.")
                 val signedUrl = URL(apkUrl, location)
