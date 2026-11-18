@@ -179,7 +179,7 @@ class AppUpdater(
                 check(code in 200..299) { str(R.string.rt_update_download_failed, code) }
             }
             val downloadCode = connection.responseCode
-            if (downloadCode == 401 || downloadCode == 403) {
+            if (token != null && downloadCode in setOf(401, 403)) {
                 throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
             }
             check(downloadCode in 200..299) { str(R.string.rt_update_download_failed, downloadCode) }
@@ -187,8 +187,14 @@ class AppUpdater(
                 "The APK download redirected to a non-HTTPS URL."
             }
             val finalHost = connection.url.host.lowercase()
-            check(finalHost == "api.github.com" || finalHost.endsWith(".githubusercontent.com")) {
-                "The APK download redirected outside GitHub's trusted asset hosts."
+            if (debugOverride) {
+                check(finalHost == apkHost) {
+                    "The debug APK download left the manifest's trusted HTTPS host."
+                }
+            } else {
+                check(finalHost == "api.github.com" || finalHost.endsWith(".githubusercontent.com")) {
+                    "The APK download redirected outside GitHub's trusted asset hosts."
+                }
             }
             val responseLength = connection.contentLengthLong
             if (responseLength > 0L) {
