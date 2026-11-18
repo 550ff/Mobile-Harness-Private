@@ -2032,8 +2032,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun finishInitialLanguageSetup() {
+        // Commit both first-run flags together so the setup screen cannot be
+        // interrupted by a locale-driven Activity recreation.
+        preferences.languageCode = com.jarves.mh.ui.theme.AppLanguage.ENGLISH.code
         preferences.initialLanguageSelected = true
-        _state.update { it.copy(initialLanguageSelected = true) }
+        _state.update {
+            it.copy(
+                languageCode = com.jarves.mh.ui.theme.AppLanguage.ENGLISH.code,
+                initialLanguageSelected = true,
+            )
+        }
     }
 
     fun reopenInitialLanguageSetup() {
