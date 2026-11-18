@@ -109,6 +109,9 @@ jobs:
               -f message="chore(signing): pin permanent release certificate" \
               -f content="$CONTENT" -f branch=main >/dev/null
           fi
+          # The tag checkout predates the first pin commit, so materialize the
+          # verified fingerprint in this runner workspace for this release too.
+          printf '%s\\n' "$CERT_FINGERPRINT" > "$GITHUB_WORKSPACE/$CERT_PATH"
 
           {
             echo "MH_UPLOAD_STORE_FILE=$KEYSTORE"
