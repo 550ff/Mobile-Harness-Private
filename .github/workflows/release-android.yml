@@ -55,10 +55,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-harness-upload.jks"
-          test -s "$RUNNER_TEMP/mobile-harness-upload.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-harness-upload.p12"
+          test -s "$RUNNER_TEMP/mobile-harness-upload.p12"
           {
-            echo "MH_UPLOAD_STORE_FILE=$RUNNER_TEMP/mobile-harness-upload.jks"
+            echo "MH_UPLOAD_STORE_FILE=$RUNNER_TEMP/mobile-harness-upload.p12"
             echo "MH_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
             echo "MH_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
             echo "MH_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD"
