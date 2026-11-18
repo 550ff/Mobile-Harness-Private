@@ -860,6 +860,7 @@ private fun AntigravityConnectionSettings(
     onSetModel: (String) -> Unit,
     onSetEffort: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val auth = state.antigravityAuth
     // The user explicitly starts sign-in; open Google's official OAuth page as soon
