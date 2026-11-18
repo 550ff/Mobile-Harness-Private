@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">تم التجاوز · للتصحيح فقط</string>
     <string name="st_use_and_check">استخدام وتحقق</string>
     <string name="st_use_custom_model_id">استخدام معرّف نموذج مخصص:</string>
+    <string name="st_use_freellmapi_preset">FreeLLMAPI preset</string>
+    <string name="st_open_freellmapi">Open local dashboard</string>
+    <string name="st_freellmapi_connection_help">Install the embedded gateway in Settings &gt; FreeLLMAPI first. Use its dashboard to add provider keys and copy the unified API key. Harness routes sub-agents through the cheaper Haiku alias; enable prompt compression in the gateway settings.</string>
+    <string name="st_freellmapi_gateway_title">FreeLLMAPI gateway</string>
+    <string name="st_freellmapi_gateway_not_installed">Embedded model gateway · Not installed</string>
+    <string name="st_freellmapi_gateway_installing">Installing server and dashboard…</string>
+    <string name="st_freellmapi_gateway_installed">Installed · Ready to start</string>
+    <string name="st_freellmapi_gateway_starting">Starting local service…</string>
+    <string name="st_freellmapi_gateway_running">Running · 127.0.0.1:3001</string>
+    <string name="st_freellmapi_gateway_error">Needs attention · Tap to view details</string>
+    <string name="st_freellmapi_gateway_help">Install FreeLLMAPI once inside Mobile Harness. The app manages the server directly; Termux is not required.</string>
+    <string name="st_freellmapi_install">Install gateway</string>
+    <string name="st_freellmapi_start">Start gateway</string>
+    <string name="st_freellmapi_stop">Stop gateway</string>
+    <string name="st_freellmapi_dashboard">Open dashboard</string>
+    <string name="st_freellmapi_copy_endpoint">Copy API address</string>
+    <string name="st_freellmapi_repair">Repair / reinstall</string>
+    <string name="st_freellmapi_gateway_setup_help">After starting, open the dashboard, add upstream provider keys, then copy the unified API key into Agent &gt; AI Provider &gt; Custom API. Choose the FreeLLMAPI preset.</string>
+    <string name="st_freellmapi_gateway_storage_note">First install needs about 1 GB of free storage and an internet connection. Keep the screen awake during installation. While running, a foreground notification and wake lock keep the local gateway available; this can use extra battery. Android may still stop background services.</string>
 </resources>
