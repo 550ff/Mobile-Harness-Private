@@ -225,11 +225,14 @@ jobs:
           TAG_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
+          # GitHub CLI's path#label syntax sets the asset label, not its filename.
+          # Copy to the canonical filename before uploading so API lookups and updater URLs agree.
+          cp "$APK_PATH" mobile-harness-online.apk
           if gh release view "$TAG_NAME" --repo "$REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "$APK_PATH#mobile-harness-online.apk" --repo "$REPOSITORY" --clobber
+            gh release upload "$TAG_NAME" "mobile-harness-online.apk" --repo "$REPOSITORY" --clobber
           else
             gh release create "$TAG_NAME" \
-              "$APK_PATH#mobile-harness-online.apk" \
+              "mobile-harness-online.apk" \
               --repo "$REPOSITORY" \
               --title "Mobile Harness $TAG_NAME" \
               --generate-notes
