@@ -127,6 +127,7 @@ fun SettingsScreen(
     onDiscoverModels: suspend (ProviderProfile, String) -> ModelDiscoveryResult,
     onValidateProvider: suspend (ProviderProfile, String, List<DiscoveredModel>) -> ConnectionValidation,
     onSetThemeMode: (AppThemeMode) -> Unit,
+    onCheckAppUpdate: () -> Unit = {},
     onSetLanguage: (String) -> Unit = {},
     onPing: () -> Unit,
     onClearTerminal: () -> Unit,
@@ -544,6 +545,40 @@ fun SettingsScreen(
                             Text(stringResource(R.string.settings_app_desc), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text("v${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = onCheckAppUpdate,
+                        enabled = state.appUpdateStatus != AppUpdateStatus.CHECKING &&
+                            state.appUpdateStatus != AppUpdateStatus.DOWNLOADING &&
+                            state.appUpdateStatus != AppUpdateStatus.INSTALLING,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (state.appUpdateStatus == AppUpdateStatus.CHECKING) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (state.appUpdateStatus == AppUpdateStatus.CHECKING) "Checking…" else "Check for updates")
+                    }
+                }
+                if (state.appUpdateStatus == AppUpdateStatus.AVAILABLE && state.appUpdate != null) {
+                    Text(
+                        "Update available: version ${state.appUpdate.versionName}. Return to Home to review and install it.",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                    )
+                }
+                if (state.appUpdateStatus == AppUpdateStatus.ERROR) {
+                    state.appUpdateError?.let { error ->
+                        Text(error, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                     }
                 }
                 Row(

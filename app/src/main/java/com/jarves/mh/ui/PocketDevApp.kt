@@ -2596,6 +2596,7 @@ private fun RootScreenHost(
                     onDiscoverModels = viewModel::discoverModels,
                     onValidateProvider = viewModel::validateProvider,
                     onSetThemeMode = viewModel::setThemeMode,
+                    onCheckAppUpdate = { viewModel.checkForAppUpdate(force = true) },
                     onSetLanguage = viewModel::setLanguage,
                     onPing = viewModel::pingApi,
                     onClearTerminal = viewModel::clearTerminal,

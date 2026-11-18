@@ -127,7 +127,7 @@ import org.json.JSONObject
 enum class StartupStage { CHECKING, SETUP_REQUIRED, INSTALLING, MODEL_SETUP, INITIALIZING, READY, ERROR }
 
 enum class ApiPingStatus { IDLE, PINGING, OK, FAILED }
-enum class AppUpdateStatus { AVAILABLE, PERMISSION_REQUIRED, DOWNLOADING, INSTALLING, ERROR }
+enum class AppUpdateStatus { CHECKING, AVAILABLE, PERMISSION_REQUIRED, DOWNLOADING, INSTALLING, ERROR }
 enum class GitHubAuthStatus { DISCONNECTED, STARTING, AWAITING_USER, CONNECTED, ERROR }
 
 data class ExportSelection(
@@ -2263,7 +2263,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             autoPingApi()
-            checkForAppUpdate()
         } else {
             showStartupError(result.exceptionOrNull() ?: IllegalStateException(str(R.string.vm_initialization_failed)))
         }
@@ -2272,6 +2271,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkForAppUpdate(force: Boolean = false) {
         // Check more often than the old 24-hour window, without polling on recomposition.
         if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 6L * 60L * 60L * 1000L) return
+        _state.update { it.copy(appUpdateStatus = AppUpdateStatus.CHECKING, appUpdateError = null) }
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { appUpdater().check() }.onSuccess { update ->
                 // Failed network/manifest requests do not consume the next check window.

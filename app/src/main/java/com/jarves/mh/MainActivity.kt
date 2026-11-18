@@ -25,7 +25,6 @@ import com.jarves.mh.ui.LocaleHelper
 import com.jarves.mh.ui.MainViewModel
 import com.jarves.mh.ui.PocketDevApp
 import com.jarves.mh.ui.theme.PocketTheme
-import com.jarves.mh.update.AppUpdateScheduler
 import com.jarves.mh.update.EXTRA_FORCE_APP_UPDATE_CHECK
 
 class MainActivity : ComponentActivity() {
@@ -41,7 +40,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!BuildConfig.DEBUG) AppUpdateScheduler.schedule(this)
         enableEdgeToEdge()
         if (intent.getBooleanExtra(EXTRA_FORCE_APP_UPDATE_CHECK, false)) {
             mainViewModel.checkForAppUpdate(force = true)
