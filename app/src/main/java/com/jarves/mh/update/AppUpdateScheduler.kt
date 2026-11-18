@@ -12,6 +12,10 @@ import java.util.concurrent.TimeUnit
 object AppUpdateScheduler {
     private const val UNIQUE_WORK_NAME = "mobile-harness-stable-update-check"
 
+    fun cancel(context: Context) {
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
+    }
+
     fun schedule(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
