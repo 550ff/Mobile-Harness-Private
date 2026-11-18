@@ -47,6 +47,7 @@ class AppUpdateCheckWorker(
         createNotificationChannel()
         val launchIntent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_FORCE_APP_UPDATE_CHECK, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
