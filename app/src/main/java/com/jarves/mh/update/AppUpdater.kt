@@ -134,6 +134,9 @@ class AppUpdater(
             connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
+            if (code == 401 || code == 403) {
+                throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
+            }
             check(code in 200..299) { str(R.string.rt_update_download_failed, code) }
             check(connection.url.protocol.equals("https", ignoreCase = true)) {
                 "The APK download redirected to a non-HTTPS URL."
