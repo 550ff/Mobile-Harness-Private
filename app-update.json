@@ -1,14 +1,14 @@
 {
   "packageName": "com.jarves.mh",
   "channel": "stable",
-  "versionCode": 14,
-  "versionName": "1.0.13",
-  "notes": "Mobile Harness 1.0.13. Open the app to review and install this verified update.",
+  "versionCode": 15,
+  "versionName": "1.0.14",
+  "notes": "Mobile Harness 1.0.14. Open the app to review and install this verified update.",
   "artifacts": {
     "online": {
-      "url": "https://api.github.com/repos/550ff/Mobile-Harness-Private/releases/assets/764579265",
-      "sha256": "7200cb2bb03a438b342865ef182117c85ada71ff7e11f2ac82e1ffdc1f2291a4",
-      "sizeBytes": 48198099
+      "url": "https://api.github.com/repos/550ff/Mobile-Harness-Private/releases/assets/764692063",
+      "sha256": "3fd687c429c1a2ad9ffed400c72fa31444be5e7db1a43deeeef24d5bc5ba0289",
+      "sizeBytes": 48196289
     }
   }
 }
