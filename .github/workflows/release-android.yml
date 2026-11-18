@@ -199,10 +199,15 @@ jobs:
           TAG_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          gh release create "$TAG_NAME" \
-            "$APK_PATH#mobile-harness-online.apk" \
-            --title "Mobile Harness $TAG_NAME" \
-            --generate-notes
+          if gh release view "$TAG_NAME" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$APK_PATH#mobile-harness-online.apk" --repo "$REPOSITORY" --clobber
+          else
+            gh release create "$TAG_NAME" \
+              "$APK_PATH#mobile-harness-online.apk" \
+              --repo "$REPOSITORY" \
+              --title "Mobile Harness $TAG_NAME" \
+              --generate-notes
+          fi
 
       - name: Finalize authenticated private manifest and attach it
         env:
@@ -216,7 +221,7 @@ jobs:
           jq --arg url "https://api.github.com/repos/$REPOSITORY/releases/assets/$ASSET_ID" \
             '.artifacts.online.url = $url' mobile-harness-update.json > mobile-harness-update.final.json
           mv mobile-harness-update.final.json mobile-harness-update.json
-          gh release upload "$TAG_NAME" "mobile-harness-update.json#mobile-harness-update.json"
+          gh release upload "$TAG_NAME" "mobile-harness-update.json#mobile-harness-update.json" --repo "$REPOSITORY" --clobber
 
       - name: Publish private update manifest
         env:
