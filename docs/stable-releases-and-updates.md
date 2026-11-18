@@ -33,6 +33,10 @@ Keep at least two secure backups of the keystore. Never commit it, upload it to 
 
 The release workflow is tag-only and fails closed if signing secrets are missing, the tag does not match Gradle's version, or APK verification fails.
 
+## Private update authentication
+
+The in-app updater reads the manifest and APK from this private repository. Connect GitHub once in Mobile Harness using the existing device sign-in flow; the signed-in account must have read access to this repository. The app copies the GitHub CLI token into a separate Android Keystore-encrypted store for update requests. No personal access token or OAuth client secret is embedded in the APK. Disconnecting GitHub clears the updater credential; revoking the token requires reconnecting.
+
 ## Debug builds
 
 CI debug APKs use the permanent signing key when the same signing secrets are configured. Before secrets are configured, the debug artifact uses the runner's temporary debug key and is not reliably update-compatible. The debug package ID remains `com.jarves.mh.custom`; the stable release package ID is `com.jarves.mh`.
