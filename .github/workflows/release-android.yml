@@ -72,21 +72,18 @@ jobs:
           SIGNING_ALIAS="mobile-harness-upload"
           SIGNING_PASSWORD="mobile-harness-private-signing-v1"
           KEYSTORE="$RUNNER_TEMP/mobile-harness-upload.p12"
-          CERT_PATH="release-signing-cert.sha256"
+          CERT_FILE="$RUNNER_TEMP/release-signing-cert.sha256"
 
           if gh release view "$SIGNING_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
             gh release download "$SIGNING_TAG" --repo "$REPOSITORY" \
-              --pattern "mobile-harness-upload.p12" --dir "$RUNNER_TEMP"
-            test -s "$KEYSTORE" || {
-              echo "::error::Permanent signing asset is missing. Refusing to generate a replacement key."
+              --pattern "mobile-harness-upload.p12" \
+              --pattern "release-signing-cert.sha256" \
+              --dir "$RUNNER_TEMP"
+            test -s "$KEYSTORE" && test -s "$CERT_FILE" || {
+              echo "::error::Permanent signing assets are incomplete. Refusing to generate a replacement key."
               exit 1
             }
           else
-            EXISTING_PIN_SHA="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.sha' 2>/dev/null || true)"
-            test -z "$EXISTING_PIN_SHA" || {
-              echo "::error::The pinned signing certificate exists but its private key release is missing. Refusing to replace it."
-              exit 1
-            }
             export SIGNING_PASSWORD
             keytool -genkeypair -v \
               -keystore "$KEYSTORE" \
@@ -98,11 +95,21 @@ jobs:
               -dname "CN=Mobile Harness Release, O=550ff, C=IN" \
               -storepass:env SIGNING_PASSWORD \
               -keypass:env SIGNING_PASSWORD
-            gh release create "$SIGNING_TAG" "$KEYSTORE#mobile-harness-upload.p12" \
+            CERT_FINGERPRINT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 \
+              -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" | \
+              awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
+            [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] || {
+              echo "::error::Could not calculate a valid signing-certificate fingerprint."
+              exit 1
+            }
+            printf '%s\\n' "$CERT_FINGERPRINT" > "$CERT_FILE"
+            gh release create "$SIGNING_TAG" \
+              "$KEYSTORE#mobile-harness-upload.p12" \
+              "$CERT_FILE#release-signing-cert.sha256" \
               --repo "$REPOSITORY" \
               --target main \
               --title "Private Mobile Harness signing identity" \
-              --notes "Permanent signing identity for stable Mobile Harness APK updates. Keep this release and asset private; do not delete or replace."
+              --notes "Permanent signing identity and certificate fingerprint for stable Mobile Harness APK updates. Keep this release private; do not delete or replace either asset."
           fi
 
           keytool -list -keystore "$KEYSTORE" -storetype PKCS12 \
@@ -110,27 +117,12 @@ jobs:
           CERT_FINGERPRINT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 \
             -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" | \
             awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
-          [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] || {
-            echo "::error::Could not calculate a valid signing-certificate fingerprint."
-            exit 1
-          }
-
-          EXISTING_SHA="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.sha' 2>/dev/null || true)"
-          if [ -n "$EXISTING_SHA" ]; then
-            PINNED="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.content | @base64d' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-            test "$PINNED" = "$CERT_FINGERPRINT" || {
-              echo "::error::Signing key does not match the previously pinned certificate."
+          PINNED_FINGERPRINT="$(tr -d '[:space:]' < "$CERT_FILE" | tr '[:upper:]' '[:lower:]')"
+          [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] && \
+            test "$PINNED_FINGERPRINT" = "$CERT_FINGERPRINT" || {
+              echo "::error::Signing key does not match the permanent certificate fingerprint asset."
               exit 1
             }
-          else
-            CONTENT="$(printf '%s\n' "$CERT_FINGERPRINT" | base64 -w0)"
-            gh api --method PUT "repos/$REPOSITORY/contents/$CERT_PATH" \
-              -f message="chore(signing): pin permanent release certificate" \
-              -f content="$CONTENT" -f branch=main >/dev/null
-          fi
-          # The tag checkout predates the first pin commit, so materialize the
-          # verified fingerprint in this runner workspace for this release too.
-          printf '%s\\n' "$CERT_FINGERPRINT" > "$GITHUB_WORKSPACE/$CERT_PATH"
 
           {
             echo "MH_UPLOAD_STORE_FILE=$KEYSTORE"
@@ -158,7 +150,7 @@ jobs:
           VERSION_NAME="$(grep -m1 -E '^[[:space:]]*versionName = ' app/build.gradle.kts | cut -d '"' -f 2)"
           test -n "$VERSION_CODE" && test -n "$VERSION_NAME"
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
-          EXPECTED_CERT="$(tr -d '[:space:]' < release-signing-cert.sha256)"
+          EXPECTED_CERT="$(tr -d '[:space:]' < "$RUNNER_TEMP/release-signing-cert.sha256")"
           ACTUAL_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}' | tr -d ':')"
           test -n "$EXPECTED_CERT" && test -n "$ACTUAL_CERT"
           test "$ACTUAL_CERT" = "$EXPECTED_CERT" || {

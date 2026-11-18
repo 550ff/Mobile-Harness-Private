@@ -6,7 +6,7 @@ The first tag-triggered release workflow automatically generates the permanent R
 
 **Security trade-off:** because this is a personal project and the signing setup must be hands-off, the PKCS#12 keystore is stored as an asset in a private GitHub Release named `mobile-harness-signing-v1`. Its passphrase is present in the private workflow source, so repository access—not the keystore password—is the security boundary. The release workflow refuses to run unless the repository is private. Anyone with read access to this private repository can retrieve the signing identity and could sign a malicious APK. Only grant repository access to people trusted with the ability to publish app updates. For stronger isolation, use a locally-held keystore and GitHub Actions Secrets instead.
 
-The certificate SHA-256 fingerprint is pinned in `release-signing-cert.sha256`. The workflow verifies the key against that pin on every release and fails closed if the private signing asset is missing or changed. **Never delete or replace the signing release or fingerprint.** Losing the signing identity permanently prevents future in-place updates.
+The certificate SHA-256 fingerprint is stored as a companion asset (`release-signing-cert.sha256`) in that same private signing release. The workflow verifies the keystore against the fingerprint on every release and fails closed if either asset is missing or changed. **Never delete or replace the signing release or either asset.** Losing the signing identity permanently prevents future in-place updates.
 
 ## Release process
 
