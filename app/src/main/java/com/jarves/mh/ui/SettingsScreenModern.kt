@@ -862,6 +862,16 @@ private fun AntigravityConnectionSettings(
 ) {
     val clipboard = LocalClipboardManager.current
     val auth = state.antigravityAuth
+    // The user explicitly starts sign-in; open Google's official OAuth page as soon
+    // as the CLI provides it, instead of making the user copy a URL and open a browser.
+    LaunchedEffect(auth.authorizationUrl) {
+        val url = auth.authorizationUrl ?: return@LaunchedEffect
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }.onFailure {
+            clipboard.setText(AnnotatedString(url))
+        }
+    }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         shape = RoundedCornerShape(14.dp),
