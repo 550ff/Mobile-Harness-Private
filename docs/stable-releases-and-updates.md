@@ -4,7 +4,7 @@
 
 The release workflow intentionally refuses to publish an APK until a permanent signing key is configured.
 
-From a trusted machine (or the app's own terminal) with JDK 17+ and GitHub CLI authenticated to `550ff/Mobile-Harness-Private`, run:
+From a trusted machine, or Android Termux, with JDK 17+ and GitHub CLI authenticated to `550ff/Mobile-Harness-Private`, run:
 
 ```bash
 bash scripts/setup-release-signing.sh
@@ -37,9 +37,9 @@ The release workflow is tag-only and fails closed if signing secrets are missing
 
 The in-app updater reads the manifest and APK from this private repository. Connect GitHub once in Mobile Harness using the existing device sign-in flow; the signed-in account must have read access to this repository. The app copies the GitHub CLI token into a separate Android Keystore-encrypted store for update requests. No personal access token or OAuth client secret is embedded in the APK. Disconnecting GitHub clears the updater credential; revoking the token requires reconnecting.
 
-## Debug builds
+## CI builds and debug package
 
-CI debug APKs use the permanent signing key when the same signing secrets are configured. Before secrets are configured, the debug artifact uses the runner's temporary debug key and is not reliably update-compatible. The debug package ID remains `com.jarves.mh.custom`; the stable release package ID is `com.jarves.mh`.
+The normal CI workflow runs unit tests, release lint, and both debug/release APK compilation. It does not publish a debug APK artifact. Only the tag-triggered release workflow publishes an installable stable APK, and it refuses to proceed without the permanent signing secrets. The debug package ID remains `com.jarves.mh.custom`; the stable release package ID is `com.jarves.mh`.
 
 ## One-time transition from the current debug installation
 
