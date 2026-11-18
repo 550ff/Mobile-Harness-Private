@@ -5,9 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.jarves.mh.data.GitHubAccessTokenStore
@@ -42,6 +45,13 @@ class AppUpdateCheckWorker(
         val preferences = applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         val lastNotifiedVersion = preferences.getLong(KEY_LAST_NOTIFIED_VERSION, 0L)
         if (update.versionCode <= lastNotifiedVersion) return Result.success()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return Result.success()
 
         val manager = NotificationManagerCompat.from(applicationContext)
         if (!manager.areNotificationsEnabled()) return Result.success()
