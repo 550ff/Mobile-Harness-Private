@@ -68,11 +68,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           TAG_NAME="v$VERSION_NAME"
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            if ! gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              echo "Tag $TAG_NAME exists but its release is missing; dispatching the release workflow."
-              gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG_NAME"
+            COMPLETE_RELEASE=false
+            if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | map(.name) | index("mobile-harness-online.apk") != null and index("mobile-harness-update.json") != null' | grep -qx true; then
+              PUBLISHED_VERSION="$(gh api "repos/$GITHUB_REPOSITORY/contents/app-update.json" --jq '.content' | base64 --decode | jq -r '.versionName // ""' 2>/dev/null || true)"
+              [[ "$PUBLISHED_VERSION" == "$VERSION_NAME" ]] && COMPLETE_RELEASE=true
+            fi
+            if [ "$COMPLETE_RELEASE" = true ]; then
+              echo "Stable release $TAG_NAME and its update manifest are complete."
             else
-              echo "Stable release $TAG_NAME already exists; no duplicate release will be created."
+              echo "Tag $TAG_NAME exists but its release or manifest is incomplete; retrying publication."
+              gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG_NAME"
             fi
             exit 0
           fi
