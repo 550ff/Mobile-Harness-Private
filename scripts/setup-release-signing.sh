@@ -10,6 +10,7 @@ CERT_PATH="release-signing-cert.sha256"
 command -v keytool >/dev/null 2>&1 || { echo "keytool is required (install JDK 17+)." >&2; exit 1; }
 command -v gh >/dev/null 2>&1 || { echo "GitHub CLI (gh) is required." >&2; exit 1; }
 gh auth status -h github.com >/dev/null
+gh auth refresh -h github.com -s repo
 mkdir -p "$KEY_DIR"
 chmod 700 "$KEY_DIR"
 
