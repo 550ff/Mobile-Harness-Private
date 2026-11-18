@@ -817,7 +817,7 @@ private fun LanguagePickerDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BackgroundTaskSetupScreen(
-    currentLanguageCode: String = "system",
+    currentLanguageCode: String = "en",
     onSetLanguage: (String) -> Unit = {},
     themeMode: AppThemeMode = AppThemeMode.DARK,
     onToggleTheme: () -> Unit = {},
@@ -1134,7 +1134,7 @@ private fun RuntimeSetupPromptScreen(
     selectedStacks: Set<DevStack>,
     selectedAgent: AgentKind = AgentKind.CLAUDE_CODE,
     themeMode: AppThemeMode = AppThemeMode.DARK,
-    currentLanguageCode: String = "system",
+    currentLanguageCode: String = "en",
     onSetLanguage: (String) -> Unit = {},
     onToggleTheme: () -> Unit = {},
     onToggleStack: (DevStack) -> Unit,
@@ -2726,7 +2726,7 @@ private fun ProviderSetupScreen(
     agentKind: AgentKind = AgentKind.CLAUDE_CODE,
     initialStep: Int = if (onboarding) 0 else 1,
     onBack: (() -> Unit)? = null,
-    currentLanguageCode: String = "system",
+    currentLanguageCode: String = "en",
     onSetLanguage: ((String) -> Unit)? = null,
     onSave: (ProviderProfile, String) -> Unit,
     // Onboarding only: finish first run without a provider; it can be configured later in Settings.
