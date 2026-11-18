@@ -19,20 +19,12 @@ class LocalizedContext(
 
 object LocaleHelper {
 
-    fun getLocale(languageCode: String): Locale? = when (languageCode.lowercase()) {
-        "system", "" -> null
-        "zh" -> Locale.SIMPLIFIED_CHINESE
-        "en" -> Locale.ENGLISH
-        else -> Locale.forLanguageTag(languageCode)
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun getLocale(languageCode: String): Locale = Locale.ENGLISH
 
+    @Suppress("UNUSED_PARAMETER")
     fun applyLanguage(context: Context, languageCode: String): Context {
-        val targetLocale = getLocale(languageCode) ?: run {
-            // Back to the device language: undo any default set by an earlier in-app choice.
-            Locale.setDefault(Resources.getSystem().configuration.locales[0])
-            return context
-        }
-
+        val targetLocale = Locale.ENGLISH
         Locale.setDefault(targetLocale)
         val config = Configuration(context.resources.configuration)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -47,16 +39,12 @@ object LocaleHelper {
     }
 }
 
-/**
- * Resolves strings in the language picked inside the app for code outside Compose
- * (ViewModel toasts, services, notifications, runtime status), where LocalContext isn't available.
- */
+/** Resolves all app strings using the fixed English locale. */
 object AppStrings {
-    fun languageCode(context: Context): String =
-        context.getSharedPreferences("pocket_preferences", Context.MODE_PRIVATE)
-            .getString("language_code", "system") ?: "system"
+    @Suppress("UNUSED_PARAMETER")
+    fun languageCode(context: Context): String = "en"
 
-    fun context(context: Context): Context = LocaleHelper.applyLanguage(context, languageCode(context))
+    fun context(context: Context): Context = LocaleHelper.applyLanguage(context, "en")
 
     fun get(context: Context, @androidx.annotation.StringRes id: Int, vararg args: Any): String =
         context(context).getString(id, *args)

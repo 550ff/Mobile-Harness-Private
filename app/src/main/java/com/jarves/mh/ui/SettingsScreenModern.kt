@@ -298,11 +298,7 @@ fun SettingsScreen(
 
             item {
                 val currentLang = AppLanguage.fromCode(state.languageCode)
-                val langSubtitle = if (currentLang == AppLanguage.SYSTEM) {
-                    stringResource(R.string.language_system_default)
-                } else {
-                    "${currentLang.displayName} (${currentLang.nativeName})"
-                }
+                val langSubtitle = currentLang.displayName
                 SettingsAccordion(
                     title = stringResource(R.string.settings_language),
                     subtitle = langSubtitle,
@@ -312,8 +308,7 @@ fun SettingsScreen(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         AppLanguage.entries.forEachIndexed { index, lang ->
-                            val isSelected = (state.languageCode == lang.code) ||
-                                (state.languageCode.isBlank() && lang == AppLanguage.SYSTEM)
+                            val isSelected = true
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -323,21 +318,15 @@ fun SettingsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = if (lang == AppLanguage.SYSTEM) {
-                                            stringResource(R.string.language_system_default)
-                                        } else {
-                                            lang.nativeName
-                                        },
+                                        text = lang.nativeName,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = 14.sp,
                                     )
-                                    if (lang != AppLanguage.SYSTEM) {
-                                        Text(
-                                            text = lang.displayName,
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+                                    Text(
+                                        text = lang.displayName,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                                 SelectionDot(isSelected)
                             }

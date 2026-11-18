@@ -673,8 +673,7 @@ private fun InitialLanguageSetupScreen(
             ) {
                 Column {
                     AppLanguage.entries.forEachIndexed { index, lang ->
-                        val isSelected = (currentLanguageCode == lang.code) ||
-                            (currentLanguageCode.isBlank() && lang == AppLanguage.SYSTEM)
+                        val isSelected = true
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -685,22 +684,16 @@ private fun InitialLanguageSetupScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (lang == AppLanguage.SYSTEM) {
-                                        stringResource(R.string.language_system_default)
-                                    } else {
-                                        lang.nativeName
-                                    },
+                                    text = lang.nativeName,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     fontSize = 15.sp,
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 )
-                                if (lang != AppLanguage.SYSTEM) {
-                                    Text(
-                                        text = lang.displayName,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                Text(
+                                    text = lang.displayName,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                             if (isSelected) {
                                 Icon(
@@ -795,8 +788,7 @@ private fun LanguagePickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            if (language == AppLanguage.SYSTEM) stringResource(R.string.language_system_default)
-                            else language.nativeName,
+                            language.nativeName,
                             modifier = Modifier.weight(1f),
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
