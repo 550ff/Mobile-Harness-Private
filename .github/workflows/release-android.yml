@@ -63,8 +63,8 @@ jobs:
               exit 1
             }
           else
-            EXISTING_CERT="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.content | @base64d' 2>/dev/null | tr -d '[:space:]' || true)"
-            test -z "$EXISTING_CERT" || {
+            EXISTING_PIN_SHA="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.sha' 2>/dev/null || true)"
+            test -z "$EXISTING_PIN_SHA" || {
               echo "::error::The pinned signing certificate exists but its private key release is missing. Refusing to replace it."
               exit 1
             }
