@@ -21,15 +21,15 @@ if [ ! -e "$KEYSTORE" ]; then
     exit 1
   fi
   export STORE_PASSWORD
-  keytool -genkeypair -v \\
-    -keystore "$KEYSTORE" \\
-    -storetype PKCS12 \\
-    -alias "$KEY_ALIAS" \\
-    -keyalg RSA \\
-    -keysize 4096 \\
-    -validity 10000 \\
-    -dname "CN=Mobile Harness Release, O=550ff, C=IN" \\
-    -storepass:env STORE_PASSWORD \\
+  keytool -genkeypair -v \
+    -keystore "$KEYSTORE" \
+    -storetype PKCS12 \
+    -alias "$KEY_ALIAS" \
+    -keyalg RSA \
+    -keysize 4096 \
+    -validity 10000 \
+    -dname "CN=Mobile Harness Release, O=550ff, C=IN" \
+    -storepass:env STORE_PASSWORD \
     -keypass:env STORE_PASSWORD
   chmod 600 "$KEYSTORE"
 fi
@@ -54,16 +54,16 @@ if [ -n "$EXISTING_SHA" ]; then
   fi
   echo "Signing certificate matches the existing pinned release identity."
 else
-  CONTENT="$(printf '%s\\n' "$CERT_FINGERPRINT" | base64 | tr -d '\\n')"
-  gh api --method PUT "repos/$REPO/contents/$CERT_PATH" \\
-    -f message="chore(signing): pin permanent release certificate" \\
-    -f content="$CONTENT" \\
+  CONTENT="$(printf '%s\n' "$CERT_FINGERPRINT" | base64 | tr -d '\n')"
+  gh api --method PUT "repos/$REPO/contents/$CERT_PATH" \
+    -f message="chore(signing): pin permanent release certificate" \
+    -f content="$CONTENT" \
     -f branch=main >/dev/null
   echo "Pinned the permanent signing-certificate fingerprint in $REPO/$CERT_PATH."
 fi
 
 # Only upload secrets after the fingerprint has been safely pinned/verified.
-base64 "$KEYSTORE" | tr -d '\\n' | gh secret set MH_UPLOAD_KEYSTORE_BASE64 --repo "$REPO"
+base64 "$KEYSTORE" | tr -d '\n' | gh secret set MH_UPLOAD_KEYSTORE_BASE64 --repo "$REPO"
 printf '%s' "$STORE_PASSWORD" | gh secret set MH_UPLOAD_STORE_PASSWORD --repo "$REPO"
 printf '%s' "$KEY_ALIAS" | gh secret set MH_UPLOAD_KEY_ALIAS --repo "$REPO"
 printf '%s' "$STORE_PASSWORD" | gh secret set MH_UPLOAD_KEY_PASSWORD --repo "$REPO"
