@@ -2276,9 +2276,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             runCatching { appUpdater().check() }.onSuccess { update ->
                 // Failed network/manifest requests do not consume the next check window.
                 preferences.lastAppUpdateCheckMillis = System.currentTimeMillis()
-                if (update != null) {
-                    _state.update {
-                        it.copy(appUpdate = update, appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
+                _state.update { current ->
+                    if (update != null) {
+                        current.copy(
+                            appUpdate = update,
+                            appUpdateStatus = AppUpdateStatus.AVAILABLE,
+                            appUpdateError = null,
+                        )
+                    } else {
+                        current.copy(appUpdate = null, appUpdateStatus = null, appUpdateError = null)
                     }
                 }
             }.onFailure { error ->
@@ -3641,6 +3647,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 refreshGitHubRepositories()
+                checkForAppUpdate(force = true)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -3739,6 +3746,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val login = runCatching { githubAccountLogin() }.getOrNull()
         if (login.isNullOrBlank()) {
             preferences.githubLogin = ""
+            GitHubAccessTokenStore(getApplication()).clear()
             _state.update { it.copy(githubAuthStatus = GitHubAuthStatus.DISCONNECTED, githubLogin = null) }
         } else {
             val gitSetupError = runCatching {
@@ -3757,6 +3765,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     },
                 )
             }
+            checkForAppUpdate(force = true)
         }
     }
 
