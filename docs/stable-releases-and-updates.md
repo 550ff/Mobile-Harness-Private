@@ -4,11 +4,15 @@
 
 The release workflow intentionally refuses to publish an APK until a permanent signing key is configured.
 
-From a trusted machine, or Android Termux, with JDK 17+ and GitHub CLI authenticated to `550ff/Mobile-Harness-Private`, run:
+On Android, open the official Termux app and run this one-time bootstrap:
 
 ```bash
-bash scripts/setup-release-signing.sh
+pkg update && pkg install -y git
+curl -fsSL https://raw.githubusercontent.com/550ff/Mobile-Harness-Private/main/scripts/termux-setup-signing.sh -o termux-setup-signing.sh
+bash termux-setup-signing.sh
 ```
+
+The script installs OpenJDK 17, GitHub CLI and Git, completes GitHub sign-in, clones/updates the private repository, then runs the signing setup. GitHub sign-in and the keystore password are entered locally in Termux—not in chat. Alternatively, on another trusted machine with JDK 17+ and `gh` authenticated, run `bash scripts/setup-release-signing.sh`.
 
 The script creates the key outside the repository at:
 
