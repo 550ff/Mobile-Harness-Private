@@ -2342,7 +2342,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(appUpdateStatus = AppUpdateStatus.PERMISSION_REQUIRED) }
             return
         }
-        if (_state.value.appUpdateStatus in setOf(AppUpdateStatus.DOWNLOADING, AppUpdateStatus.INSTALLING)) return
+        if (
+            _state.value.appUpdateStatus == AppUpdateStatus.DOWNLOADING ||
+            _state.value.appUpdateStatus == AppUpdateStatus.INSTALLING
+        ) return
         _state.update {
             it.copy(appUpdateStatus = AppUpdateStatus.DOWNLOADING, appUpdateDownloadedBytes = 0L, appUpdateTotalBytes = info.sizeBytes, appUpdateError = null)
         }
