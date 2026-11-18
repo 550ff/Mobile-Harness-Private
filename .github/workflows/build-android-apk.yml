@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  HAS_STABLE_SIGNING: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 != '' }}
+  HAS_STABLE_SIGNING: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 != '' && secrets.MH_UPLOAD_STORE_PASSWORD != '' && secrets.MH_UPLOAD_KEY_ALIAS != '' && secrets.MH_UPLOAD_KEY_PASSWORD != '' }}
 
 jobs:
   build:
@@ -72,7 +72,7 @@ jobs:
       - name: Build and test
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon :app:testOnlineDebugUnitTest :app:assembleOnlineDebug
+          ./gradlew --no-daemon :app:testOnlineDebugUnitTest :app:lintOnlineRelease :app:assembleOnlineDebug :app:assembleOnlineRelease
 
       - name: Explain debug APK signing state
         run: |
