@@ -83,6 +83,13 @@ jobs:
           VERSION_NAME="$(grep -m1 -E '^[[:space:]]*versionName = ' app/build.gradle.kts | cut -d '"' -f 2)"
           test -n "$VERSION_CODE" && test -n "$VERSION_NAME"
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          EXPECTED_CERT="$(tr -d '[:space:]' < release-signing-cert.sha256)"
+          ACTUAL_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print tolower($2); exit}' | tr -d ':')"
+          test -n "$EXPECTED_CERT" && test -n "$ACTUAL_CERT"
+          test "$ACTUAL_CERT" = "$EXPECTED_CERT" || {
+            echo "::error::APK signing certificate does not match the pinned permanent release identity."
+            exit 1
+          }
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
           echo "$BADGING" | grep -F "package: name='com.jarves.mh' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" >/dev/null
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
