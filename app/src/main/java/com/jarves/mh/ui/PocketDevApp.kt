@@ -672,7 +672,7 @@ private fun InitialLanguageSetupScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Column {
-                    AppLanguage.entries.forEachIndexed { index, lang ->
+                    listOf(AppLanguage.ENGLISH).forEachIndexed { index, lang ->
                         val isSelected = true
                         Row(
                             modifier = Modifier
@@ -719,10 +719,7 @@ private fun InitialLanguageSetupScreen(
                 // Persist the visible choice before advancing. On a fresh install the
                 // displayed English option can be selected visually while the stored
                 // locale is still unset or inherited from the device.
-                onClick = {
-                    onSelectLanguage(AppLanguage.ENGLISH.code)
-                    onContinue()
-                },
+                onClick = onContinue,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
