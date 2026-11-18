@@ -4,7 +4,7 @@ set -euo pipefail
 REPO="550ff/Mobile-Harness-Private"
 WORKDIR="${HOME}/Mobile-Harness-Private"
 
-if [[ -z "${PREFIX:-}" || ! -d "${PREFIX:-/nonexistent}/etc/termux" ]]; then
+if [[ -z "${PREFIX:-}" ]] || ! command -v pkg >/dev/null 2>&1; then
   echo "Run this script inside the official Termux app." >&2
   exit 1
 fi
