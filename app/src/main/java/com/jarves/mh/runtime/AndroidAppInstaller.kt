@@ -132,6 +132,9 @@ object AndroidAppInstaller {
 
     fun apkFingerprint(apk: File): String = fingerprint(apk)
 
+    /** MIUI uses its external installer UI and does not deliver our PackageInstaller callback. */
+    fun usesExternalInstaller(): Boolean = isMiuiDevice()
+
     internal fun rememberInstalled(context: Context, packageName: String, fingerprint: String) {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .edit()

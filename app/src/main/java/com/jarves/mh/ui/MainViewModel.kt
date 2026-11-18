@@ -452,6 +452,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var recentExitLoadedAtElapsedMillis = 0L
     private var pendingAndroidInstallId: String? = null
     private var pendingAndroidInstallLaunch = false
+    private var pendingAppUpdateInstallId: String? = null
     private var androidLaunchAtMillis: Long? = null
     @Volatile private var setupCompletionHandled: Boolean = false
     @Volatile private var githubAuthProcess: Process? = null
@@ -529,6 +530,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             AndroidAppInstaller.events.collect { event ->
+                if (event.operationId == pendingAppUpdateInstallId) {
+                    pendingAppUpdateInstallId = null
+                    _state.update { current ->
+                        if (event.success) {
+                            current.copy(appUpdate = null, appUpdateStatus = AppUpdateStatus.UP_TO_DATE, appUpdateError = null)
+                        } else {
+                            current.copy(
+                                appUpdateStatus = AppUpdateStatus.ERROR,
+                                appUpdateError = event.message ?: str(R.string.vm_installer_start_failed),
+                            )
+                        }
+                    }
+                    return@collect
+                }
                 if (event.operationId != pendingAndroidInstallId) return@collect
                 val project = _state.value.activeProject
                 val launchRequested = pendingAndroidInstallLaunch
@@ -2336,8 +2351,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { current -> current.copy(appUpdateDownloadedBytes = downloaded, appUpdateTotalBytes = total) }
                 }
             }.onSuccess { apk ->
+                val operationId = UUID.randomUUID().toString()
                 _state.update { it.copy(appUpdateStatus = AppUpdateStatus.INSTALLING) }
-                runCatching { AndroidAppInstaller.install(getApplication(), apk) }.onFailure { error ->
+                if (!AndroidAppInstaller.usesExternalInstaller()) {
+                    pendingAppUpdateInstallId = operationId
+                }
+                runCatching {
+                    AndroidAppInstaller.install(getApplication(), apk, operationId = operationId)
+                }.onSuccess {
+                    // MIUI's external installer does not return a PackageInstaller callback.
+                    // Keep the update retryable if the user cancels its confirmation screen.
+                    if (AndroidAppInstaller.usesExternalInstaller()) {
+                        _state.update { current ->
+                            current.copy(appUpdateStatus = AppUpdateStatus.AVAILABLE, appUpdateError = null)
+                        }
+                    }
+                }.onFailure { error ->
+                    pendingAppUpdateInstallId = null
                     _state.update { it.copy(appUpdateStatus = AppUpdateStatus.ERROR, appUpdateError = error.message ?: str(R.string.vm_installer_start_failed)) }
                 }
             }.onFailure { error ->
