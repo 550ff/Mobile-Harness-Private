@@ -48,7 +48,7 @@ class AppUpdater(
         return try {
             connection.connectTimeout = 8_000
             connection.readTimeout = 12_000
-            connection.instanceFollowRedirects = true
+            connection.instanceFollowRedirects = manifestHost != "api.github.com"
             connection.setRequestProperty("Accept", "application/vnd.github+json")
             connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             if (manifestHost == "api.github.com") {
@@ -56,6 +56,9 @@ class AppUpdater(
             }
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
+            if (manifestHost == "api.github.com" && code in 300..399) {
+                throw IOException("The private update manifest endpoint returned an unexpected redirect.")
+            }
             if (code == 401 || code == 403) {
                 throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
             }
@@ -126,12 +129,13 @@ class AppUpdater(
         }
         val token = accessToken?.takeIf(String::isNotBlank)
             ?: throw IOException("Connect GitHub in Settings to download private app updates.")
-        val connection = apkUrl.openConnection() as HttpURLConnection
+        var connection = apkUrl.openConnection() as HttpURLConnection
         var completed = false
         try {
             connection.connectTimeout = 15_000
             connection.readTimeout = 60_000
-            connection.instanceFollowRedirects = true
+            // Never forward the private-repository token to GitHub's signed asset host.
+            connection.instanceFollowRedirects = false
             connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("Accept", "application/octet-stream")
             connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
@@ -140,7 +144,30 @@ class AppUpdater(
             if (code == 401 || code == 403) {
                 throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
             }
-            check(code in 200..299) { str(R.string.rt_update_download_failed, code) }
+            if (code in setOf(301, 302, 303, 307, 308)) {
+                val location = connection.getHeaderField("Location")
+                    ?: throw IOException("GitHub returned an invalid private asset redirect.")
+                val signedUrl = URL(apkUrl, location)
+                val signedHost = signedUrl.host.lowercase()
+                if (signedUrl.protocol != "https" || !signedHost.endsWith(".githubusercontent.com")) {
+                    throw IOException("GitHub redirected the APK to an untrusted download host.")
+                }
+                connection.disconnect()
+                connection = (signedUrl.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15_000
+                    readTimeout = 60_000
+                    instanceFollowRedirects = false
+                    setRequestProperty("Accept", "application/octet-stream")
+                    setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
+                }
+            } else {
+                check(code in 200..299) { str(R.string.rt_update_download_failed, code) }
+            }
+            val downloadCode = connection.responseCode
+            if (downloadCode == 401 || downloadCode == 403) {
+                throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
+            }
+            check(downloadCode in 200..299) { str(R.string.rt_update_download_failed, downloadCode) }
             check(connection.url.protocol.equals("https", ignoreCase = true)) {
                 "The APK download redirected to a non-HTTPS URL."
             }
