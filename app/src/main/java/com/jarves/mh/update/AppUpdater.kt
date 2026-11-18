@@ -120,8 +120,9 @@ class AppUpdater(
         val target = File(directory, "mobile-harness-${BuildConfig.APP_VARIANT}.apk")
         val apkUrl = URL(info.apkUrl)
         val apkHost = apkUrl.host.lowercase()
-        if (apkUrl.protocol != "https" || apkHost != "github.com") {
-            throw IOException("Private app updates must use an HTTPS github.com release URL.")
+        val validPrivateAssetPath = Regex("^/repos/[^/]+/[^/]+/releases/assets/[0-9]+/?$").matches(apkUrl.path)
+        if (apkUrl.protocol != "https" || apkHost != "api.github.com" || !validPrivateAssetPath) {
+            throw IOException("Private app updates must use a valid HTTPS GitHub release-asset API URL.")
         }
         val token = accessToken?.takeIf(String::isNotBlank)
             ?: throw IOException("Connect GitHub in Settings to download private app updates.")
@@ -132,6 +133,8 @@ class AppUpdater(
             connection.readTimeout = 60_000
             connection.instanceFollowRedirects = true
             connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Accept", "application/octet-stream")
+            connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
             if (code == 401 || code == 403) {
@@ -142,7 +145,7 @@ class AppUpdater(
                 "The APK download redirected to a non-HTTPS URL."
             }
             val finalHost = connection.url.host.lowercase()
-            check(finalHost == "github.com" || finalHost.endsWith(".githubusercontent.com")) {
+            check(finalHost == "api.github.com" || finalHost.endsWith(".githubusercontent.com")) {
                 "The APK download redirected outside GitHub's trusted asset hosts."
             }
             val responseLength = connection.contentLengthLong
