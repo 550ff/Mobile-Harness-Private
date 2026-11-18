@@ -17,8 +17,17 @@ class AndroidAppInstallReceiver : BroadcastReceiver() {
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             @Suppress("DEPRECATION")
             val userAction = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-            userAction?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            userAction?.let(context::startActivity)
+            if (userAction == null) {
+                AndroidAppInstaller.publish(
+                    AndroidInstallEvent(
+                        operationId, null, false, false,
+                        "Android did not provide the installation confirmation screen.",
+                    ),
+                )
+                return
+            }
+            userAction.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(userAction)
             return
         }
         if (status != PackageInstaller.STATUS_SUCCESS) {
@@ -27,7 +36,13 @@ class AndroidAppInstallReceiver : BroadcastReceiver() {
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             return
         }
-        val packageName = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME) ?: return
+        val packageName = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME)
+        if (packageName.isNullOrBlank()) {
+            AndroidAppInstaller.publish(
+                AndroidInstallEvent(operationId, null, false, false, "Android reported success without a package name."),
+            )
+            return
+        }
         intent.getStringExtra(AndroidAppInstaller.EXTRA_APK_FINGERPRINT)?.let { fingerprint ->
             AndroidAppInstaller.rememberInstalled(context, packageName, fingerprint)
         }
