@@ -20,19 +20,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Require permanent signing secrets
-        env:
-          KEYSTORE_BASE64: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_BASE64" || { echo "::error::Missing MH_UPLOAD_KEYSTORE_BASE64. Run scripts/setup-release-signing.sh first."; exit 1; }
-          test -n "$STORE_PASSWORD" || { echo "::error::Missing MH_UPLOAD_STORE_PASSWORD."; exit 1; }
-          test -n "$KEY_ALIAS" || { echo "::error::Missing MH_UPLOAD_KEY_ALIAS."; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "::error::Missing MH_UPLOAD_KEY_PASSWORD."; exit 1; }
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -47,21 +34,87 @@ jobs:
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;28.2.13676358" "cmake;3.22.1"
 
-      - name: Configure permanent signing
+      # One-time, no-Termux bootstrap. The repository MUST remain private:
+      # anyone with repository read access can retrieve this signing identity.
+      # A missing asset after the certificate has been pinned is a hard failure.
+      - name: Bootstrap or restore permanent signing identity
         env:
-          KEYSTORE_BASE64: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-harness-upload.p12"
-          test -s "$RUNNER_TEMP/mobile-harness-upload.p12"
+          VISIBILITY="$(gh api "repos/$REPOSITORY" --jq '.visibility')"
+          test "$VISIBILITY" = "private" || {
+            echo "::error::The signing identity may only be stored in a private repository."
+            exit 1
+          }
+
+          SIGNING_TAG="mobile-harness-signing-v1"
+          SIGNING_ALIAS="mobile-harness-upload"
+          SIGNING_PASSWORD="mobile-harness-private-signing-v1"
+          KEYSTORE="$RUNNER_TEMP/mobile-harness-upload.p12"
+          CERT_PATH="release-signing-cert.sha256"
+
+          if gh release view "$SIGNING_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release download "$SIGNING_TAG" --repo "$REPOSITORY" \
+              --pattern "mobile-harness-upload.p12" --dir "$RUNNER_TEMP"
+            test -s "$KEYSTORE" || {
+              echo "::error::Permanent signing asset is missing. Refusing to generate a replacement key."
+              exit 1
+            }
+          else
+            EXISTING_CERT="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.content' 2>/dev/null | base64 --decode | tr -d '[:space:]' || true)"
+            test -z "$EXISTING_CERT" || {
+              echo "::error::The pinned signing certificate exists but its private key release is missing. Refusing to replace it."
+              exit 1
+            }
+            export SIGNING_PASSWORD
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" \
+              -storetype PKCS12 \
+              -alias "$SIGNING_ALIAS" \
+              -keyalg RSA \
+              -keysize 4096 \
+              -validity 10000 \
+              -dname "CN=Mobile Harness Release, O=550ff, C=IN" \
+              -storepass:env SIGNING_PASSWORD \
+              -keypass:env SIGNING_PASSWORD
+            gh release create "$SIGNING_TAG" "$KEYSTORE#mobile-harness-upload.p12" \
+              --repo "$REPOSITORY" \
+              --target main \
+              --title "Private Mobile Harness signing identity" \
+              --notes "Permanent signing identity for stable Mobile Harness APK updates. Keep this release and asset private; do not delete or replace."
+          fi
+
+          keytool -list -keystore "$KEYSTORE" -storetype PKCS12 \
+            -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" >/dev/null
+          CERT_FINGERPRINT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 \
+            -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" | \
+            awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
+          [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] || {
+            echo "::error::Could not calculate a valid signing-certificate fingerprint."
+            exit 1
+          }
+
+          EXISTING_SHA="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.sha' 2>/dev/null || true)"
+          if [ -n "$EXISTING_SHA" ]; then
+            PINNED="$(gh api "repos/$REPOSITORY/contents/$CERT_PATH" --jq '.content | @base64d' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            test "$PINNED" = "$CERT_FINGERPRINT" || {
+              echo "::error::Signing key does not match the previously pinned certificate."
+              exit 1
+            }
+          else
+            CONTENT="$(printf '%s\n' "$CERT_FINGERPRINT" | base64 -w0)"
+            gh api --method PUT "repos/$REPOSITORY/contents/$CERT_PATH" \
+              -f message="chore(signing): pin permanent release certificate" \
+              -f content="$CONTENT" -f branch=main >/dev/null
+          fi
+
           {
-            echo "MH_UPLOAD_STORE_FILE=$RUNNER_TEMP/mobile-harness-upload.p12"
-            echo "MH_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
-            echo "MH_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
-            echo "MH_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD"
+            echo "MH_UPLOAD_STORE_FILE=$KEYSTORE"
+            echo "MH_UPLOAD_STORE_PASSWORD=$SIGNING_PASSWORD"
+            echo "MH_UPLOAD_KEY_ALIAS=$SIGNING_ALIAS"
+            echo "MH_UPLOAD_KEY_PASSWORD=$SIGNING_PASSWORD"
           } >> "$GITHUB_ENV"
 
       - name: Set up Gradle
@@ -168,13 +221,10 @@ jobs:
           if [ -n "$EXISTING_SHA" ]; then
             gh api --method PUT "$API_PATH" \
               -f message="chore(release): publish update manifest for $TAG_NAME" \
-              -f content="$CONTENT" \
-              -f sha="$EXISTING_SHA" \
-              -f branch=main >/dev/null
+              -f content="$CONTENT" -f sha="$EXISTING_SHA" -f branch=main >/dev/null
           else
             gh api --method PUT "$API_PATH" \
               -f message="chore(release): publish update manifest for $TAG_NAME" \
-              -f content="$CONTENT" \
-              -f branch=main >/dev/null
+              -f content="$CONTENT" -f branch=main >/dev/null
           fi
           echo "Private update manifest published to $REPOSITORY:main/app-update.json"
