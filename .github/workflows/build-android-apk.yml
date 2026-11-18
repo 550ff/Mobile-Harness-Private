@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Build online debug APK
+    name: Validate online Android builds
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
