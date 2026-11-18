@@ -196,6 +196,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           APK_PATH: ${{ steps.verify.outputs.apk }}
+          REPOSITORY: ${{ github.repository }}
           TAG_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
