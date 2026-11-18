@@ -20,7 +20,9 @@ The script creates the key outside the repository at:
 
 `~/.config/mobile-harness/keys/mobile-harness-upload.p12`
 
-It uploads the keystore and passwords to GitHub Actions Secrets:
+It pins the SHA-256 fingerprint of the release certificate in `release-signing-cert.sha256`, then uploads the keystore and passwords to GitHub Actions Secrets. The release workflow rejects any APK whose signer does not match that pinned certificate.
+
+GitHub Actions Secrets used:
 
 - `MH_UPLOAD_KEYSTORE_BASE64`
 - `MH_UPLOAD_STORE_PASSWORD`
