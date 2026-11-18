@@ -4,7 +4,7 @@
 
 The release workflow intentionally refuses to publish an APK until a permanent signing key is configured.
 
-From a trusted machine with JDK 17+ and GitHub CLI authenticated to `550ff/Mobile-Harness`, run:
+From a trusted machine (or the app's own terminal) with JDK 17+ and GitHub CLI authenticated to `550ff/Mobile-Harness-Private`, run:
 
 ```bash
 bash scripts/setup-release-signing.sh
@@ -29,7 +29,7 @@ Keep at least two secure backups of the keystore. Never commit it, upload it to 
 2. Increment both `versionCode` and `versionName` in `app/build.gradle.kts`.
 3. Create a matching tag, for example `v1.0.11`.
 4. Push the tag. `.github/workflows/release-android.yml` runs tests, lint, builds the signed online APK, verifies its package/version/signature, generates the SHA-256 manifest and publishes a GitHub Release.
-5. The app checks `550ff/Mobile-Harness/releases/latest/download/mobile-harness-update.json`.
+5. The app reads `app-update.json` through the private repository Contents API using the GitHub credential stored in Android Keystore.
 
 The release workflow is tag-only and fails closed if signing secrets are missing, the tag does not match Gradle's version, or APK verification fails.
 
