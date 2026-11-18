@@ -14,6 +14,8 @@ import com.jarves.mh.data.GitHubAccessTokenStore
 import com.jarves.mh.MainActivity
 import kotlinx.coroutines.CancellationException
 
+const val EXTRA_FORCE_APP_UPDATE_CHECK = "com.jarves.mh.extra.FORCE_APP_UPDATE_CHECK"
+
 /** Background stable-release check. It never silently downloads or installs an APK. */
 class AppUpdateCheckWorker(
     appContext: Context,
