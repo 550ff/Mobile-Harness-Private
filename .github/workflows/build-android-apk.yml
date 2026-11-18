@@ -16,9 +16,6 @@ on:
 permissions:
   contents: read
 
-env:
-  HAS_STABLE_SIGNING: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 != '' && secrets.MH_UPLOAD_STORE_PASSWORD != '' && secrets.MH_UPLOAD_KEY_ALIAS != '' && secrets.MH_UPLOAD_KEY_PASSWORD != '' }}
-
 jobs:
   build:
     name: Build online debug APK
@@ -47,46 +44,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Configure permanent APK signing (when secrets exist)
-        if: env.HAS_STABLE_SIGNING == 'true'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_BASE64"
-          test -n "$STORE_PASSWORD"
-          test -n "$KEY_ALIAS"
-          test -n "$KEY_PASSWORD"
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mobile-harness-upload.jks"
-          test -s "$RUNNER_TEMP/mobile-harness-upload.jks"
-          {
-            echo "MH_UPLOAD_STORE_FILE=$RUNNER_TEMP/mobile-harness-upload.jks"
-            echo "MH_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
-            echo "MH_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
-            echo "MH_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD"
-          } >> "$GITHUB_ENV"
-
       - name: Build and test
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon :app:testOnlineDebugUnitTest :app:lintOnlineRelease :app:assembleOnlineDebug :app:assembleOnlineRelease
-
-      - name: Explain debug APK signing state
-        run: |
-          if [ "$HAS_STABLE_SIGNING" = "true" ]; then
-            echo "Debug APK is signed with the permanent repository signing key."
-          else
-            echo "::warning::No MH_UPLOAD_* signing secrets configured. This artifact uses an ephemeral runner key and cannot reliably update a previous CI APK. Configure signing with scripts/setup-release-signing.sh."
-          fi
-
-      - name: Upload debug APK
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-harness-online-debug
-          path: app/build/outputs/apk/online/debug/*.apk
-          if-no-files-found: error
-          retention-days: 1
