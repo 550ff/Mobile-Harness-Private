@@ -27,6 +27,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.tag || github.ref }}
 
+      - name: Validate release tag matches app version
+        env:
+          TAG_NAME: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(grep -m1 -E '^[[:space:]]*versionName = ' app/build.gradle.kts | cut -d '"' -f 2)"
+          test -n "$VERSION_NAME"
+          test "$TAG_NAME" = "v$VERSION_NAME" || {
+            echo "::error::Tag $TAG_NAME does not match Gradle version v$VERSION_NAME."
+            exit 1
+          }
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
