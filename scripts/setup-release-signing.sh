@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="550ff/Mobile-Harness"
+REPO="550ff/Mobile-Harness-Private"
 KEY_DIR="${HOME}/.config/mobile-harness/keys"
 KEYSTORE="${KEY_DIR}/mobile-harness-upload.p12"
 KEY_ALIAS="mobile-harness-upload"
