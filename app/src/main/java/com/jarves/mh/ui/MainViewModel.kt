@@ -2271,7 +2271,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun checkForAppUpdate(force: Boolean = false) {
         // Check more often than the old 24-hour window, without polling on recomposition.
         if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 6L * 60L * 60L * 1000L) return
-        _state.update { it.copy(appUpdateStatus = AppUpdateStatus.CHECKING, appUpdateError = null) }
+        _state.update { it.copy(appUpdate = null, appUpdateStatus = AppUpdateStatus.CHECKING, appUpdateError = null) }
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { appUpdater().check() }.onSuccess { update ->
                 // Failed network/manifest requests do not consume the next check window.
