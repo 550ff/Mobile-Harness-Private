@@ -25,6 +25,7 @@ import com.jarves.mh.ui.MainViewModel
 import com.jarves.mh.ui.PocketDevApp
 import com.jarves.mh.ui.theme.PocketTheme
 import com.jarves.mh.update.AppUpdateScheduler
+import com.jarves.mh.update.EXTRA_FORCE_APP_UPDATE_CHECK
 
 class MainActivity : ComponentActivity() {
     private var appliedLanguageCode: String? = null
@@ -41,6 +42,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (!BuildConfig.DEBUG) AppUpdateScheduler.schedule(this)
         enableEdgeToEdge()
+        if (intent.getBooleanExtra(EXTRA_FORCE_APP_UPDATE_CHECK, false)) {
+            mainViewModel.checkForAppUpdate(force = true)
+        }
         setContent {
             val vm = mainViewModel
             val state by vm.state.collectAsStateWithLifecycle()
@@ -64,6 +68,14 @@ class MainActivity : ComponentActivity() {
                     PocketDevApp(vm)
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_FORCE_APP_UPDATE_CHECK, false)) {
+            mainViewModel.checkForAppUpdate(force = true)
         }
     }
 
