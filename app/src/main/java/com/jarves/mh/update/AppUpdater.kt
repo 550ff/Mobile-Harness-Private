@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Base64
 import com.jarves.mh.BuildConfig
 import com.jarves.mh.R
 import com.jarves.mh.ui.AppStrings
@@ -27,6 +28,7 @@ data class AppUpdateInfo(
 class AppUpdater(
     private val context: Context,
     private val manifestUrlOverride: String = "",
+    private val accessToken: String? = null,
 ) {
     private fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String =
         AppStrings.get(context, id, *args)
@@ -37,19 +39,41 @@ class AppUpdater(
         if (!manifestUrl.startsWith("https://", ignoreCase = true)) {
             throw IOException("The update manifest must use HTTPS.")
         }
+        val manifestHost = URL(manifestUrl).host.lowercase()
+        val token = accessToken?.takeIf(String::isNotBlank)
+        if (manifestHost == "api.github.com" && token == null) {
+            throw IOException("Connect GitHub in Settings to check private app updates.")
+        }
         val connection = URL(manifestUrl).openConnection() as HttpURLConnection
         return try {
             connection.connectTimeout = 8_000
             connection.readTimeout = 12_000
             connection.instanceFollowRedirects = true
-            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+            if (manifestHost == "api.github.com") {
+                connection.setRequestProperty("Authorization", "Bearer $token")
+            }
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
+            if (code == 401 || code == 403) {
+                throw IOException("GitHub access expired or lacks private-repository access. Reconnect GitHub in Settings.")
+            }
             if (code !in 200..299) throw IOException("Update manifest request failed (HTTP $code).")
             if (!connection.url.protocol.equals("https", ignoreCase = true)) {
                 throw IOException("The update manifest redirected to a non-HTTPS URL.")
             }
-            val root = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+            val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+            val responseJson = JSONObject(responseText)
+            val manifestText = if (
+                responseJson.optString("encoding").equals("base64", ignoreCase = true) &&
+                responseJson.optString("content").isNotBlank()
+            ) {
+                Base64.decode(responseJson.optString("content"), Base64.DEFAULT).toString(Charsets.UTF_8)
+            } else {
+                responseText
+            }
+            val root = JSONObject(manifestText)
             val manifestPackage = root.optString("packageName")
             if (manifestPackage.isNotBlank() && manifestPackage != context.packageName) return null
             val versionCode = root.optLong("versionCode", -1L)
@@ -94,17 +118,29 @@ class AppUpdater(
         check(directory.exists() || directory.mkdirs()) { str(R.string.rt_update_prepare_failed) }
         val partial = File(directory, "mobile-harness-${BuildConfig.APP_VARIANT}.apk.part")
         val target = File(directory, "mobile-harness-${BuildConfig.APP_VARIANT}.apk")
-        val connection = URL(info.apkUrl).openConnection() as HttpURLConnection
+        val apkUrl = URL(info.apkUrl)
+        val apkHost = apkUrl.host.lowercase()
+        if (apkUrl.protocol != "https" || apkHost != "github.com") {
+            throw IOException("Private app updates must use an HTTPS github.com release URL.")
+        }
+        val token = accessToken?.takeIf(String::isNotBlank)
+            ?: throw IOException("Connect GitHub in Settings to download private app updates.")
+        val connection = apkUrl.openConnection() as HttpURLConnection
         var completed = false
         try {
             connection.connectTimeout = 15_000
             connection.readTimeout = 60_000
             connection.instanceFollowRedirects = true
+            connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("User-Agent", "MobileHarness/${BuildConfig.VERSION_NAME}")
             val code = connection.responseCode
             check(code in 200..299) { str(R.string.rt_update_download_failed, code) }
             check(connection.url.protocol.equals("https", ignoreCase = true)) {
                 "The APK download redirected to a non-HTTPS URL."
+            }
+            val finalHost = connection.url.host.lowercase()
+            check(finalHost == "github.com" || finalHost.endsWith(".githubusercontent.com")) {
+                "The APK download redirected outside GitHub's trusted asset hosts."
             }
             val responseLength = connection.contentLengthLong
             if (responseLength > 0L) {
@@ -193,7 +229,8 @@ class AppUpdater(
         MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it) }
 
-    private companion object {
+    companion object {
+        const val GITHUB_UPDATE_TOKEN_ID = "github_private_release_read"
         val SHA256_PATTERN = Regex("^[a-f0-9]{64}$")
         const val MAX_APK_BYTES = 512L * 1024L * 1024L
     }
