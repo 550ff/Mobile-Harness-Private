@@ -716,7 +716,13 @@ private fun InitialLanguageSetupScreen(
 
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = onContinue,
+                // Persist the visible choice before advancing. On a fresh install the
+                // displayed English option can be selected visually while the stored
+                // locale is still unset or inherited from the device.
+                onClick = {
+                    onSelectLanguage(AppLanguage.ENGLISH.code)
+                    onContinue()
+                },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
