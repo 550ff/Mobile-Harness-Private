@@ -51,7 +51,7 @@ Before switching to the first stable release:
 2. Export a backup. Include credentials only in a password-protected backup and keep that password private.
 3. Install the first signed stable release alongside the old `.custom` debug app. The package IDs differ, so Android can keep both installed.
 4. Restore the backup into the stable app and confirm projects, settings and credentials.
-5. After verifying the stable app, optionally remove the old debug app. Later stable updates retain the same package ID and signing key and install in place.
+5. After verifying the stable app, optionally remove the old debug app. If the GitHub connection did not restore, sign in once in the stable app; its updater token is encrypted with that app's Android Keystore and cannot be copied from the debug package. Later stable updates retain the same package ID, signing key, app data and GitHub session and install in place.
 
 ## Runtime behavior
 
