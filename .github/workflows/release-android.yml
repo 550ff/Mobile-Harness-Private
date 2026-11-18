@@ -113,6 +113,7 @@ jobs:
               --repo "$REPOSITORY" \
               --target main \
               --title "Private Mobile Harness signing identity" \
+              --prerelease \
               --notes "Permanent signing identity and certificate fingerprint for stable Mobile Harness APK updates. Keep this release private; do not delete or replace either asset."
           fi
 
