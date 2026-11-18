@@ -576,6 +576,14 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                     )
                 }
+                if (state.appUpdateStatus == AppUpdateStatus.UP_TO_DATE) {
+                    Text(
+                        "You're up to date. Mobile Harness ${BuildConfig.VERSION_NAME} is the latest available version.",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                }
                 if (state.appUpdateStatus == AppUpdateStatus.ERROR) {
                     state.appUpdateError?.let { error ->
                         Text(error, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)

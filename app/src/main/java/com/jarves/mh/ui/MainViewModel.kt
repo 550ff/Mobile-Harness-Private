@@ -127,7 +127,7 @@ import org.json.JSONObject
 enum class StartupStage { CHECKING, SETUP_REQUIRED, INSTALLING, MODEL_SETUP, INITIALIZING, READY, ERROR }
 
 enum class ApiPingStatus { IDLE, PINGING, OK, FAILED }
-enum class AppUpdateStatus { CHECKING, AVAILABLE, PERMISSION_REQUIRED, DOWNLOADING, INSTALLING, ERROR }
+enum class AppUpdateStatus { CHECKING, UP_TO_DATE, AVAILABLE, PERMISSION_REQUIRED, DOWNLOADING, INSTALLING, ERROR }
 enum class GitHubAuthStatus { DISCONNECTED, STARTING, AWAITING_USER, CONNECTED, ERROR }
 
 data class ExportSelection(
@@ -2284,7 +2284,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             appUpdateError = null,
                         )
                     } else {
-                        current.copy(appUpdate = null, appUpdateStatus = null, appUpdateError = null)
+                        current.copy(appUpdate = null, appUpdateStatus = AppUpdateStatus.UP_TO_DATE, appUpdateError = null)
                     }
                 }
             }.onFailure { error ->
