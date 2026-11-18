@@ -8,6 +8,8 @@ on:
       - test/github-runtime-path-coverage
       - redesign/glass-polish-and-audit
       - feature/stable-release-auto-updater
+    paths-ignore:
+      - "app-update.json"
   pull_request:
     branches:
       - main
@@ -76,5 +78,4 @@ jobs:
           fi
           git tag -a "$TAG_NAME" "$GITHUB_SHA" -m "Mobile Harness $TAG_NAME"
           git push origin "refs/tags/$TAG_NAME"
-          gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG_NAME"
-          echo "Created $TAG_NAME and dispatched its signed release after successful tests and Android builds."
+          echo "Created $TAG_NAME. The tag push automatically starts the signed release workflow."

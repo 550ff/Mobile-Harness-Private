@@ -157,11 +157,11 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
           EXPECTED_CERT="$(tr -d '[:space:]:' < "$RUNNER_TEMP/release-signing-cert.sha256" | tr '[:upper:]' '[:lower:]')"
           CERT_OUTPUT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK")"
-          ACTUAL_CERT="$(printf '%s\\n' "$CERT_OUTPUT" | awk -F'digest: ' '/certificate SHA-256 digest:/ {print $NF; exit}' | tr -cd '[:xdigit:]' | tr '[:upper:]' '[:lower:]')"
+          ACTUAL_CERT="$(printf '%s\n' "$CERT_OUTPUT" | awk -F'digest: ' '/certificate SHA-256 digest:/ {print $NF; exit}' | tr -cd '[:xdigit:]' | tr '[:upper:]' '[:lower:]')"
           if [[ ! "$EXPECTED_CERT" =~ ^[a-f0-9]{64}$ || ! "$ACTUAL_CERT" =~ ^[a-f0-9]{64}$ ]]; then
             echo "::error::Could not parse the pinned or APK signing-certificate SHA-256 fingerprint."
-            printf 'Pinned fingerprint length: %s; APK fingerprint length: %s\\n' "${#EXPECTED_CERT}" "${#ACTUAL_CERT}"
-            printf '%s\\n' "$CERT_OUTPUT"
+            printf 'Pinned fingerprint length: %s; APK fingerprint length: %s\n' "${#EXPECTED_CERT}" "${#ACTUAL_CERT}"
+            printf '%s\n' "$CERT_OUTPUT"
             exit 1
           fi
           if [ "$ACTUAL_CERT" != "$EXPECTED_CERT" ]; then
@@ -171,11 +171,11 @@ jobs:
             exit 1
           fi
           BADGING="$("$BUILD_TOOLS/aapt" dump badging "$APK")"
-          PACKAGE_LINE="$(printf '%s\\n' "$BADGING" | grep -m1 "^package:")"
+          PACKAGE_LINE="$(printf '%s\n' "$BADGING" | grep -m1 "^package:")"
           echo "Verified package metadata: $PACKAGE_LINE"
-          printf '%s\\n' "$PACKAGE_LINE" | grep -F "name='com.jarves.mh'" >/dev/null
-          printf '%s\\n' "$PACKAGE_LINE" | grep -F "versionCode='$VERSION_CODE'" >/dev/null
-          printf '%s\\n' "$PACKAGE_LINE" | grep -F "versionName='$VERSION_NAME'" >/dev/null
+          printf '%s\n' "$PACKAGE_LINE" | grep -F "name='com.jarves.mh'" >/dev/null
+          printf '%s\n' "$PACKAGE_LINE" | grep -F "versionCode='$VERSION_CODE'" >/dev/null
+          printf '%s\n' "$PACKAGE_LINE" | grep -F "versionName='$VERSION_NAME'" >/dev/null
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
 
       - name: Create release manifest
