@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
+import com.jarves.mh.data.GitHubAccessTokenStore
 import androidx.work.WorkerParameters
 import com.jarves.mh.MainActivity
 import kotlinx.coroutines.CancellationException
@@ -20,8 +21,10 @@ class AppUpdateCheckWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        val accessToken = GitHubAccessTokenStore(applicationContext).read()
+            ?: return Result.success()
         val update = try {
-            AppUpdater(applicationContext).check()
+            AppUpdater(applicationContext, accessToken = accessToken).check()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
