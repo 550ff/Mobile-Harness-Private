@@ -1,7 +1,14 @@
 {
   "packageName": "com.jarves.mh",
   "channel": "stable",
-  "versionCode": 0,
-  "versionName": "0.0.0",
-  "notes": "No stable release has been published yet."
+  "versionCode": 13,
+  "versionName": "1.0.12",
+  "notes": "Mobile Harness 1.0.12. Open the app to review and install this verified update.",
+  "artifacts": {
+    "online": {
+      "url": "https://api.github.com/repos/550ff/Mobile-Harness-Private/releases/assets/764431010",
+      "sha256": "ef97203dd39293e14785c6ea888edab336f7d05d4935f32fc3f7d32eb0cb7de2",
+      "sizeBytes": 48197434
+    }
+  }
 }
