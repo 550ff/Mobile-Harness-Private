@@ -78,7 +78,8 @@ class AppUpdater(
             }
             val root = JSONObject(manifestText)
             val manifestPackage = root.optString("packageName")
-            if (manifestPackage.isNotBlank() && manifestPackage != context.packageName) return null
+            if (manifestPackage.isBlank()) throw IOException("The update manifest is missing its package name.")
+            if (manifestPackage != context.packageName) return null
             val versionCode = root.optLong("versionCode", -1L)
             if (versionCode <= BuildConfig.VERSION_CODE) return null
 

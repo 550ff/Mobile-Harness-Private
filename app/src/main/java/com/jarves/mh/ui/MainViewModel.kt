@@ -2284,6 +2284,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkForAppUpdate(force: Boolean = false) {
+        if (_state.value.appUpdateStatus == AppUpdateStatus.CHECKING) return
         // Check more often than the old 24-hour window, without polling on recomposition.
         if (!force && System.currentTimeMillis() - preferences.lastAppUpdateCheckMillis < 6L * 60L * 60L * 1000L) return
         _state.update { it.copy(appUpdate = null, appUpdateStatus = AppUpdateStatus.CHECKING, appUpdateError = null) }
@@ -2341,7 +2342,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(appUpdateStatus = AppUpdateStatus.PERMISSION_REQUIRED) }
             return
         }
-        if (_state.value.appUpdateStatus == AppUpdateStatus.DOWNLOADING) return
+        if (_state.value.appUpdateStatus in setOf(AppUpdateStatus.DOWNLOADING, AppUpdateStatus.INSTALLING)) return
         _state.update {
             it.copy(appUpdateStatus = AppUpdateStatus.DOWNLOADING, appUpdateDownloadedBytes = 0L, appUpdateTotalBytes = info.sizeBytes, appUpdateError = null)
         }
