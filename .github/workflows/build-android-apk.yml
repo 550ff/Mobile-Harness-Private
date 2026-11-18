@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -63,9 +64,15 @@ jobs:
           test -n "$VERSION_NAME"
           TAG_NAME="v$VERSION_NAME"
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            echo "Stable release $TAG_NAME already exists; no duplicate release will be created."
+            if ! gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Tag $TAG_NAME exists but its release is missing; dispatching the release workflow."
+              gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG_NAME"
+            else
+              echo "Stable release $TAG_NAME already exists; no duplicate release will be created."
+            fi
             exit 0
           fi
           git tag -a "$TAG_NAME" "$GITHUB_SHA" -m "Mobile Harness $TAG_NAME"
           git push origin "refs/tags/$TAG_NAME"
-          echo "Created $TAG_NAME after successful tests and Android builds."
+          gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG_NAME"
+          echo "Created $TAG_NAME and dispatched its signed release after successful tests and Android builds."

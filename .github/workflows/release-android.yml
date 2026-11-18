@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to build and publish"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -19,6 +25,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -153,7 +160,7 @@ jobs:
       - name: Create release manifest
         env:
           APK_PATH: ${{ steps.verify.outputs.apk }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ inputs.tag || github.ref_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
