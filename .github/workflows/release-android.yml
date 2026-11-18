@@ -134,3 +134,27 @@ jobs:
             "mobile-harness-update.json#mobile-harness-update.json" \
             --title "Mobile Harness $TAG_NAME" \
             --generate-notes
+
+      - name: Publish private update manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          API_PATH="repos/$REPOSITORY/contents/app-update.json"
+          CONTENT="$(base64 -w0 mobile-harness-update.json)"
+          EXISTING_SHA="$(gh api "$API_PATH" --jq '.sha' 2>/dev/null || true)"
+          if [ -n "$EXISTING_SHA" ]; then
+            gh api --method PUT "$API_PATH" \
+              -f message="chore(release): publish update manifest for $TAG_NAME" \
+              -f content="$CONTENT" \
+              -f sha="$EXISTING_SHA" \
+              -f branch=main >/dev/null
+          else
+            gh api --method PUT "$API_PATH" \
+              -f message="chore(release): publish update manifest for $TAG_NAME" \
+              -f content="$CONTENT" \
+              -f branch=main >/dev/null
+          fi
+          echo "Private update manifest published to $REPOSITORY:main/app-update.json"
