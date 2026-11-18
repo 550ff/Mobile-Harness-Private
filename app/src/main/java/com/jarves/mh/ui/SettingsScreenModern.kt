@@ -568,25 +568,39 @@ fun SettingsScreen(
                         Text(if (state.appUpdateStatus == AppUpdateStatus.CHECKING) "Checking…" else "Check for updates")
                     }
                 }
-                if (state.appUpdateStatus == AppUpdateStatus.AVAILABLE && state.appUpdate != null) {
-                    Text(
-                        "Update available: version ${state.appUpdate.versionName}. Return to Home to review and install it.",
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
-                    )
-                }
-                if (state.appUpdateStatus == AppUpdateStatus.UP_TO_DATE) {
-                    Text(
-                        "You're up to date. Mobile Harness ${BuildConfig.VERSION_NAME} is the latest available version.",
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    )
-                }
-                if (state.appUpdateStatus == AppUpdateStatus.ERROR) {
-                    state.appUpdateError?.let { error ->
-                        Text(error, modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    AnimatedVisibility(
+                        visible = state.appUpdateStatus == AppUpdateStatus.AVAILABLE && state.appUpdate != null,
+                    ) {
+                        Text(
+                            "Update found: version ${state.appUpdate?.versionName}. Review the update prompt to download and install.",
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    AnimatedVisibility(visible = state.appUpdateStatus == AppUpdateStatus.UP_TO_DATE) {
+                        Text(
+                            "You're up to date. Mobile Harness ${BuildConfig.VERSION_NAME} is the latest available version.",
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    AnimatedVisibility(visible = state.appUpdateStatus == AppUpdateStatus.ERROR) {
+                        state.appUpdateError?.let { error ->
+                            Text(
+                                error,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                            )
+                        }
                     }
                 }
                 Row(
