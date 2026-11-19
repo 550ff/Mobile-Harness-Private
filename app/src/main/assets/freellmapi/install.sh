@@ -9,12 +9,36 @@ if [ ! -d "$ROOT" ] && [ -d /workspace/freellmapi.previous ]; then
     mv /workspace/freellmapi.previous "$ROOT"
 fi
 
+# Avoid repeating a multi-minute source build when the exact pinned version
+# is already complete. A missing marker or output file still triggers repair.
+if [ -f "$ROOT/.mobile-harness-version" ] &&
+   [ "$(cat "$ROOT/.mobile-harness-version")" = "$PINNED_COMMIT" ] &&
+   [ -s "$ROOT/server/dist/index.js" ] &&
+   [ -s "$ROOT/client/dist/index.html" ]; then
+    echo "[MH] The pinned FreeLLMAPI build is already installed; skipping rebuild"
+    exit 0
+fi
+
+retry() {
+    local attempt=1
+    local max_attempts=3
+    until "$@"; do
+        if [ "$attempt" -ge "$max_attempts" ]; then
+            echo "[MH] Command failed after $attempt attempts: $*" >&2
+            return 1
+        fi
+        echo "[MH] Network/dependency step failed; retrying ($((attempt + 1))/$max_attempts)…"
+        sleep $((attempt * 2))
+        attempt=$((attempt + 1))
+    done
+}
+
 echo "[MH] Checking Node.js and built-in SQLite"
 node -e "if (Number(process.versions.node.split('.')[0]) < 22) process.exit(1); require('node:sqlite').DatabaseSync"
 echo "[MH] Downloading pinned FreeLLMAPI source"
 rm -rf "$STAGE"
-git clone --filter=blob:none --no-checkout "$UPSTREAM" "$STAGE"
-git -C "$STAGE" fetch --depth=1 origin "$PINNED_COMMIT"
+retry git clone --filter=blob:none --no-checkout "$UPSTREAM" "$STAGE"
+retry git -C "$STAGE" fetch --depth=1 origin "$PINNED_COMMIT"
 git -C "$STAGE" checkout --detach FETCH_HEAD
 
 echo "[MH] Applying PRoot SQLite compatibility patch"
@@ -40,7 +64,7 @@ fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2) + String.fromCharCode
 NODE
 
 echo "[MH] Installing ARM64 production dependencies"
-npm install --no-audit --no-fund --no-progress
+retry npm install --no-audit --no-fund --no-progress
 echo "[MH] Building FreeLLMAPI server, CLI and dashboard"
 NODE_OPTIONS=--max-old-space-size=1536 npm run build
 test -s server/dist/index.js

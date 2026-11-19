@@ -57,87 +57,38 @@ jobs:
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;28.2.13676358" "cmake;3.22.1"
 
-      # One-time, no-Termux bootstrap. The repository MUST remain private:
-      # anyone with repository read access can retrieve this signing identity.
-      # A missing asset after the certificate has been pinned is a hard failure.
-      - name: Bootstrap or restore permanent signing identity
+      # The public repository must never contain the permanent signing identity.
+      # Supply a locally generated keystore through repository Actions secrets.
+      - name: Restore protected signing identity
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
+          KEYSTORE_B64: ${{ secrets.MH_UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
+          EXPECTED_CERT: ${{ secrets.MH_UPLOAD_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          VISIBILITY="$(gh api "repos/$REPOSITORY" --jq '.visibility')"
-          test "$VISIBILITY" = "private" || {
-            echo "::error::The signing identity may only be stored in a private repository."
+          test -n "$KEYSTORE_B64" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" && test -n "$EXPECTED_CERT" || {
+            echo "::error::Signing secrets are incomplete. Add all five MH_UPLOAD_* repository Actions secrets."
             exit 1
           }
-
-          SIGNING_TAG="mobile-harness-signing-v1"
-          SIGNING_ALIAS="mobile-harness-upload"
-          SIGNING_PASSWORD="mobile-harness-private-signing-v1"
           KEYSTORE="$RUNNER_TEMP/mobile-harness-upload.p12"
           CERT_FILE="$RUNNER_TEMP/release-signing-cert.sha256"
-
-          if gh release view "$SIGNING_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
-            gh release download "$SIGNING_TAG" --repo "$REPOSITORY" \
-              --pattern "mobile-harness-upload.p12" \
-              --pattern "release-signing-cert.sha256" \
-              --dir "$RUNNER_TEMP"
-            test -s "$KEYSTORE" && test -s "$CERT_FILE" || {
-              echo "::error::Permanent signing assets are incomplete. Refusing to generate a replacement key."
-              exit 1
-            }
-          else
-            if git ls-remote --exit-code --tags origin "refs/tags/$SIGNING_TAG" >/dev/null 2>&1; then
-              echo "::error::The permanent signing tag exists but its private release is missing. Refusing to generate a replacement key."
-              exit 1
-            fi
-            export SIGNING_PASSWORD
-            keytool -genkeypair -v \
-              -keystore "$KEYSTORE" \
-              -storetype PKCS12 \
-              -alias "$SIGNING_ALIAS" \
-              -keyalg RSA \
-              -keysize 4096 \
-              -validity 10000 \
-              -dname "CN=Mobile Harness Release, O=550ff, C=IN" \
-              -storepass:env SIGNING_PASSWORD \
-              -keypass:env SIGNING_PASSWORD
-            CERT_FINGERPRINT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 \
-              -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" | \
-              awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
-            [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] || {
-              echo "::error::Could not calculate a valid signing-certificate fingerprint."
-              exit 1
-            }
-            printf '%s\n' "$CERT_FINGERPRINT" > "$CERT_FILE"
-            gh release create "$SIGNING_TAG" \
-              "$KEYSTORE#mobile-harness-upload.p12" \
-              "$CERT_FILE#release-signing-cert.sha256" \
-              --repo "$REPOSITORY" \
-              --target main \
-              --title "Private Mobile Harness signing identity" \
-              --prerelease \
-              --notes "Permanent signing identity and certificate fingerprint for stable Mobile Harness APK updates. Keep this release private; do not delete or replace either asset."
-          fi
-
-          keytool -list -keystore "$KEYSTORE" -storetype PKCS12 \
-            -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" >/dev/null
-          CERT_FINGERPRINT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 \
-            -alias "$SIGNING_ALIAS" -storepass "$SIGNING_PASSWORD" | \
-            awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
-          PINNED_FINGERPRINT="$(tr -d '[:space:]' < "$CERT_FILE" | tr '[:upper:]' '[:lower:]')"
-          [[ "$CERT_FINGERPRINT" =~ ^[a-f0-9]{64}$ ]] && \
-            test "$PINNED_FINGERPRINT" = "$CERT_FINGERPRINT" || {
-              echo "::error::Signing key does not match the permanent certificate fingerprint asset."
-              exit 1
-            }
-
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storetype PKCS12 -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" >/dev/null
+          ACTUAL_CERT="$(keytool -list -v -keystore "$KEYSTORE" -storetype PKCS12 -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" | awk -F': ' '/SHA256:/{gsub(":","",$2); print tolower($2); exit}')"
+          EXPECTED_CERT="$(printf '%s' "$EXPECTED_CERT" | tr -d '[:space:]:' | tr '[:upper:]' '[:lower:]')"
+          [[ "$ACTUAL_CERT" =~ ^[a-f0-9]{64}$ ]] && test "$ACTUAL_CERT" = "$EXPECTED_CERT" || {
+            echo "::error::Signing keystore does not match MH_UPLOAD_CERT_SHA256."
+            exit 1
+          }
+          printf '%s\n' "$ACTUAL_CERT" > "$CERT_FILE"
           {
             echo "MH_UPLOAD_STORE_FILE=$KEYSTORE"
-            echo "MH_UPLOAD_STORE_PASSWORD=$SIGNING_PASSWORD"
-            echo "MH_UPLOAD_KEY_ALIAS=$SIGNING_ALIAS"
-            echo "MH_UPLOAD_KEY_PASSWORD=$SIGNING_PASSWORD"
+            echo "MH_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "MH_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
+            echo "MH_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
       - name: Set up Gradle
