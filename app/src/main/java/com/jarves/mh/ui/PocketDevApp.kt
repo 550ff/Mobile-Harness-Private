@@ -632,36 +632,11 @@ private fun InitialLanguageSetupScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Default.Language,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        stringResource(R.string.language_welcome_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                stringResource(R.string.language_welcome_subtitle),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+            SetupExperienceHeader(
+                step = 1,
+                stageLabel = "LANGUAGE",
+                title = stringResource(R.string.language_welcome_title),
+                description = stringResource(R.string.language_welcome_subtitle),
             )
             Spacer(Modifier.height(20.dp))
 
@@ -921,13 +896,11 @@ private fun BackgroundTaskSetupScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.bg_setup_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.bg_setup_subtitle),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+            SetupExperienceHeader(
+                step = 2,
+                stageLabel = "DEVICE ACCESS",
+                title = stringResource(R.string.bg_setup_title),
+                description = stringResource(R.string.bg_setup_subtitle),
             )
             Spacer(Modifier.height(18.dp))
             StepDots(currentStep)
@@ -1207,28 +1180,12 @@ private fun RuntimeSetupPromptScreen(
 
             if (currentStep == 0) {
                 // Step 0: Device Compatibility & Verification
-                Text(
-                    text = stringResource(R.string.runtime_setup_device_check_badge),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                SetupExperienceHeader(
+                    step = 3,
+                    stageLabel = "RUNTIME SETUP",
+                    title = stringResource(R.string.runtime_setup_device_ready_title),
+                    description = stringResource(R.string.runtime_setup_device_ready_desc),
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.runtime_setup_device_ready_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.runtime_setup_device_ready_desc),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.5.sp,
-                    lineHeight = 19.sp,
-                )
-
                 Spacer(Modifier.height(20.dp))
 
                 // Hardware & Compatibility Specs Card
@@ -2804,8 +2761,18 @@ private fun ProviderSetupScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
         ) {
-            if (onboarding) StepDots(step)
-            Spacer(Modifier.height(16.dp))
+            if (onboarding) {
+                SetupExperienceHeader(
+                    step = 4,
+                    stageLabel = "AI CONNECTION",
+                    title = "Connect your AI provider",
+                    description = "Choose your agent, add your provider credentials and validate the connection. You can change these settings later.",
+                )
+                Spacer(Modifier.height(12.dp))
+                StepDots(step)
+            } else {
+                Spacer(Modifier.height(16.dp))
+            }
             when (step) {
                 0 -> DeviceCheckStep(context, onContinue = { step = 1 })
                 1 -> ProviderChoiceStep(
@@ -3650,67 +3617,11 @@ private fun ProjectsScreen(
             verticalArrangement = Arrangement.spacedBy(SpaceLg),
         ) {
             item {
-                // Hero section
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SpaceSm)) {
-                    Text(
-                        stringResource(R.string.projects_hero_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        stringResource(R.string.projects_hero_desc),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-
-                // Primary actions row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(SpaceMd),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Button(
-                        onClick = onCreateQuickProject,
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(RadiusXl),
-                        contentPadding = PaddingValues(horizontal = SpaceLg),
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(SpaceSm),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Text(
-                                text = stringResource(R.string.projects_quick_project),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                            )
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = { showCreate = true },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(RadiusXl),
-                        contentPadding = PaddingValues(horizontal = SpaceLg),
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(SpaceSm),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Text(
-                                text = stringResource(R.string.projects_new_project),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                            )
-                        }
-                    }
-                }
+                HarnessHomeHero(
+                    projectCount = projects.size,
+                    onQuickStart = onCreateQuickProject,
+                    onNewProject = { showCreate = true },
+                )
 
                 // Import existing section
                 val isImportExpanded = importExpanded || state.projectImporting || state.gitCloneRunning
