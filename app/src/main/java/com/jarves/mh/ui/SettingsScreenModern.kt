@@ -855,13 +855,24 @@ private fun SettingsAccordion(
     Surface(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
-        shadowElevation = 1.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+        color = if (expanded) MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.98f)
+            else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
+        shadowElevation = if (expanded) 3.dp else 1.dp,
+        border = BorderStroke(
+            if (expanded) 1.35.dp else 1.dp,
+            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+        ),
     ) {
         Column {
             Row(
-                Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
+                Modifier.fillMaxWidth()
+                    .background(
+                        if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.045f)
+                        else Color.Transparent,
+                    )
+                    .clickable(onClick = onClick)
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), modifier = Modifier.size(40.dp)) {
