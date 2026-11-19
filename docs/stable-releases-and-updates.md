@@ -24,11 +24,12 @@ Connect GitHub once in Mobile Harness using the existing device sign-in flow; th
 
 ## Update behavior
 
-- Updates are checked only when the user taps **Settings → Check for updates**. No background polling or update notifications are scheduled.
+- When GitHub is connected, the app refreshes its saved credential and checks for a stable update on launch. The user can also trigger **Settings → Check for updates** at any time. No periodic background polling or update notifications are scheduled.
 - When an update is available, the app opens the review/install prompt.
 - Downloads require HTTPS, an exact declared size, SHA-256, matching package/version and the installed signing certificate.
-- Installation is handed to Android PackageInstaller. Android/OEM policy can still show a system confirmation; ordinary apps cannot guarantee silent installation.
-- Failed downloads are discarded. The existing installed app is never uninstalled as part of updating.
+- Installation is handed to Android PackageInstaller. Android may ask for install permission or a final confirmation; ordinary apps cannot silently bypass that system step.
+- Updates use the same `com.jarves.mh` package ID and permanent signing certificate. Android installs them over the existing app, preserving app data, projects and saved credentials. The app never uninstalls itself as part of updating.
+- Failed downloads are discarded before installation. If GitHub access is revoked, reconnect once; normal updates do not require a new GitHub sign-in.
 
 ## CI builds and debug package
 
