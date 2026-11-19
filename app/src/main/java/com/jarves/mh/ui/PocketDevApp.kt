@@ -521,6 +521,12 @@ private fun AntigravityOnboardingScreen(
             Modifier.fillMaxSize().padding(padding).padding(24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            SetupExperienceHeader(
+                step = 4,
+                stageLabel = "AI CONNECTION",
+                title = "Connect your AI agent",
+                description = "Sign in securely, complete the connection and continue to your workspace.",
+            )
             Text(stringResource(R.string.ws_agy_connect_google), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
                 stringResource(R.string.ws_agy_connect_desc),
@@ -1178,16 +1184,16 @@ private fun RuntimeSetupPromptScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
+            SetupExperienceHeader(
+                step = 3,
+                stageLabel = "RUNTIME SETUP",
+                title = "Prepare your development workspace",
+                description = "Verify device compatibility, choose the tools you need and install the runtime.",
+            )
+            Spacer(Modifier.height(20.dp))
+
             if (currentStep == 0) {
                 // Step 0: Device Compatibility & Verification
-                SetupExperienceHeader(
-                    step = 3,
-                    stageLabel = "RUNTIME SETUP",
-                    title = stringResource(R.string.runtime_setup_device_ready_title),
-                    description = stringResource(R.string.runtime_setup_device_ready_desc),
-                )
-                Spacer(Modifier.height(20.dp))
-
                 // Hardware & Compatibility Specs Card
                 Surface(
                     shape = RoundedCornerShape(16.dp),
