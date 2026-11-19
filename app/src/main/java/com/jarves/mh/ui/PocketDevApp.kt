@@ -527,11 +527,6 @@ private fun AntigravityOnboardingScreen(
                 title = "Connect your AI agent",
                 description = "Sign in securely, complete the connection and continue to your workspace.",
             )
-            Text(stringResource(R.string.ws_agy_connect_google), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(
-                stringResource(R.string.ws_agy_connect_desc),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             when (state.antigravityAuth.status) {
                 AntigravityAuthStatus.SIGNED_OUT, AntigravityAuthStatus.ERROR -> {
                     state.antigravityAuth.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -3628,6 +3623,8 @@ private fun ProjectsScreen(
                     onQuickStart = onCreateQuickProject,
                     onNewProject = { showCreate = true },
                 )
+
+                Spacer(Modifier.height(SpaceLg))
 
                 // Import existing section
                 val isImportExpanded = importExpanded || state.projectImporting || state.gitCloneRunning
